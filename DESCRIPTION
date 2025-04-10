@@ -1,7 +1,7 @@
 Package: phonto
 Type: Package
 Title: Using NHANES via Epiconnector
-Version: 0.3.6
+Version: 0.4.0
 Maintainer: Laha Ale <ainilaha@gmail.com>, Robert Gentleman <rgentlem@gmail.com>, Deepayan Sarkar <deepayan.sarkar@gmail.com>
 Authors@R: 
     c(person("Laha", "Ale", ,"ainilaha@gmail.com", role = c("aut", "cre"),
