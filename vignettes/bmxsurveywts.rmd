@@ -1,0 +1,150 @@
+---
+layout: default
+title: "Using Survey Weights with BMI"
+# output: html_document
+vignette: >
+  %\VignetteIndexEntry{Incorporating Survey Weights into NHANES Analysis using R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+  
+## Introduction
+We will examine whether any of the longitudinal trends in BMI (ie it increasing) can be observed in an analysis of the NHANES data.  To do this we will look across a number of cycles and need to use the survey weights appropriately to get at our estimates.
+
+## Overview
+
+### Data Extraction and Manipulation
+
+##### Searching for Variables, Selecting Them, and Performing a Joint Query
+
+```{r, warning=FALSE, message=FALSE}
+
+# Loading Packages
+library(nhanesA)
+library(phonto)
+library(dplyr)
+library(tidyr)
+library(survey)
+
+
+# Selecting demographic variables and Glycohemoglobin variables
+DEMO = c("RIAGENDR","RIDAGEYR","RIDRETH1","SDMVSTRA","SDMVPSU","WTMEC2YR","SDDSRVYR","WTINT2YR")
+BMX = c('BMXBMI')
+
+bmx_tables <- c("BMX", "BMX_B", "BMX_C", "BMX_D", "BMX_E", "BMX_F", "BMX_G", "BMX_H", "BMX_I", "BMX_J", "BMX_L")
+demo_tables <- c("DEMO", "DEMO_B", "DEMO_C", "DEMO_D", "DEMO_E", "DEMO_F", "DEMO_G", "DEMO_H", "DEMO_I", "DEMO_J", "DEMO_L")
+
+l1 = vector("list", length=length(bmx_tables))
+l2 = vector("list", length=length(demo_tables))
+for(i in 1:length(l1)) {l1[[i]] = BMX; l2[[i]] = DEMO}
+names(l1) = bmx_tables
+names(l2) = demo_tables
+
+# Creating a list to pass to the jointQuery function
+cols_df= c(l1,l2)
+  
+
+# Performing the joint query
+df = jointQuery(cols_df)
+```
+
+
+### Data Pre-processing. 
+
+After obtaining the data, preprocessing is a vital step for the analyses that follow. This includes flagging the subset of observations (identified by SEQN) for inclusion in the analysis, adjusting the weights to correspond to the selected cycles, and generating new variables tailored to your analytical needs, such as age categories.
+
+```{r, warning=FALSE, message=FALSE}
+df = df %>%
+  mutate(MEC4YR = (1/11)*WTMEC2YR,
+         inAnalysis = !is.na(BMXBMI),
+         one = 1,
+         Age.Group = cut(RIDAGEYR, 
+                        breaks=c(-Inf,19,29,39,49,59,69,79,Inf),
+                        labels=c("Under 20", "20-29","30-39",
+                                 "40-49","50-59", "60-69", "70-79", "80 and over")))
+```
+
+### Survey Design Considerations 
+
+##### Understanding Survey Components
+We create a survey design object to incorporate the complex survey design into our analysis. The identifiers, strata, and weights are all defined in this object.
+
+It's crucial to create your survey design object prior to subsetting your data. This ensures that the complex survey design features, such as stratification and clustering, are accurately captured and applied to the entire dataset, thereby maintaining the integrity of subsequent analyses.
+
+```{r}
+df = df[!is.null(df$MEC4YR) & !is.na(df$MEC4YR),]  # remove missing values in `weights'
+nhanesDesign <- svydesign(id = ~SDMVPSU,  # Primary Sampling Units (PSU)
+                          strata  = ~SDMVSTRA, # Stratification used in the survey
+                          weights = ~MEC4YR,   # Survey weights
+                          nest    = TRUE,      # Whether PSUs are nested within strata
+                          data    = df)
+df_sub = subset(nhanesDesign, inAnalysis)
+```
+
+## Calculating Summary Statistics
+
+### Calculating the Mean, Quantiles, Variance
+
+
+##### Calculating the mean 
+
+```{r}
+
+# For the entire dataset
+svymean(~BMXBMI, df_sub)
+  
+# By age group
+svyby(~BMXBMI, ~Age.Group + BeginYear, df_sub, svymean)
+  
+# By Gender 
+svyby(~BMXBMI, ~RIAGENDR, df_sub, svymean)
+
+```
+
+
+##### Calculating quantiles
+
+```{r}
+
+# For the entire dataset
+svyquantile(~BMXBMI, df_sub, quantiles = c(0.25,0.5,0.75))
+  
+# By age group
+svyby(~BMXBMI, ~Age.Group, df_sub, svyquantile, quantiles = c(0.5))
+  
+# By Gender 
+svyby(~BMXBMI, ~RIAGENDR, df_sub, svyquantile, quantiles = c(0.5))
+```
+
+##### Calculating Variance
+
+```{r}
+
+# For the entire dataset
+svyvar(~BMXBMI, df_sub, quantiles = c(0.25,0.5,0.75))
+  
+# By age group
+svyby(~BMXBMI, ~Age.Group, df_sub, svyvar)
+  
+# By Gender 
+svyby(~BMXBMI, ~RIAGENDR, df_sub, svyvar)
+
+```
+
+
+## Conducting Simple Regression Analysis
+
+The `svyglm()` function can be used to conduct regression analyses that account for the survey design. Here we'll use it to model Glycated Hemoglobin (HbA1C) levels (`LBXGH`) as a function of age and race.
+
+### Syntax for svyglm
+The syntax for using `svyglm()` is similar to the `glm()` function in base R but designed to work with survey objects.
+
+
+
+To model LBXGH levels by age (RIDAGEYR) and race (RIDRETH3), we can set up our model as follows. This will provide you with the regression coefficients, standard errors, and significance tests that account for the complex survey design. The interpretation of these results would be similar to interpreting output from a standard generalized linear model (glm), but keep in mind that these estimates are weighted to be nationally representative.
+
+```{r}
+model <- svyglm(BMXBMI ~ RIDAGEYR + RIDRETH1, design = df_sub, family = gaussian())
+summary(model)
+```
+

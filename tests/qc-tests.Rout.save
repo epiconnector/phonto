@@ -1,0 +1,244 @@
+
+R Under development (unstable) (2024-07-12 r86893) -- "Unsuffered Consequences"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> ## Test that qc functions work
+> 
+> options(width = 80)
+> 
+> library(nhanesA)
+> library(phonto)
+> 
+> 
+> ## By default, qc_var extracts relevant metadata subsets from the DB
+> ## as needed. As these tables are not that big, we could also
+> ## pre-fetch them and supply to qc_var().
+> 
+> var <- phonto:::metadata_var()
+> cb <-  phonto:::metadata_cb()
+> tab <- phonto:::metadata_tab()
+> 
+> qc_var("PHAFSTMN", var, cb, tab)
+Variable:  PHAFSTMN
+Appears in multiple tables within same cycle:
+       cycle                            Tables
+1  1999-2000                                PH
+2  2001-2002                              PH_B
+3  2003-2004                              PH_C
+4  2005-2006         FASTQX_D / GLU_D / OGTT_D
+5  2007-2008         FASTQX_E / GLU_E / OGTT_E
+6  2009-2010         FASTQX_F / GLU_F / OGTT_F
+7  2011-2012         FASTQX_G / GLU_G / OGTT_G
+8  2013-2014 FASTQX_H / GLU_H / INS_H / OGTT_H
+9  2015-2016                  FASTQX_I / INS_I
+10 2017-2018                          FASTQX_J
+11 2017-2020                          P_FASTQX
+
+Mismatch in Description:
+                                                                                                                     description
+1 The time (in minutes) between when the examinee last ate or  drank anything other than water and the time of the venipuncture.
+2  The time (in minutes) between when the examinee last ate or drank anything other than water and the time of the venipuncture.
+3                                                                                            Total length of 'food fast' minutes
+  Frequency
+1         1
+2        12
+3        10
+
+Mismatch in Saslabel:
+                             saslabel Frequency
+1 Total length of 'food fast' minutes        12
+2   Total length of food fast minutes        11
+
+Mismatch in Target:
+                                       target Frequency
+1  Both males and females 1 YEARS - 150 YEARS        11
+2 Both males and females 12 YEARS - 150 YEARS        12
+> qc_var("LBCBHC", var, cb, tab)
+Variable:  LBCBHC
+Mismatch in Description:
+                        description Frequency
+1 Beta-hexachlorocyclohexane (ng/g)         2
+2 Beta-hexachlorocyclohexane (pg/g)         4
+
+Mismatch in Saslabel:
+                           saslabel Frequency
+1 Beta-hexachlorocyclohexane (ng/g)         2
+2 Beta-hexachlorocyclohexane (pg/g)         4
+> qc_var("ENQ100", var, cb, tab)
+Variable:  ENQ100
+Appears in multiple tables within same cycle:
+      cycle        Tables
+1 2007-2008 ENX_E / SPX_E
+2 2009-2010 ENX_F / SPX_F
+3 2011-2012 ENX_G / SPX_G
+
+Mismatch in Description:
+                                                                                                                                 description
+1  In the past 7 days {have you/has SP} had a cough cold phlegm runny nose or other respiratory illness? Do not count allergies or hay fever
+2 In the past 7 days {have you/has SP} had a cough cold phlegm runny nose or other respiratory illness? Do not count allergies or hay fever.
+  Frequency
+1         3
+2         3
+
+Mismatch in Saslabel:
+                         saslabel Frequency
+1 Cough cold resp illness 7 days?         3
+2        Had respiratory illness?         3
+> qc_var("LBXHCT", var, cb, tab)
+Variable:  LBXHCT
+Appears in multiple tables within same cycle:
+       cycle        Tables
+1  1999-2000         LAB25
+2  2001-2002         L25_B
+3  2003-2004         L25_C
+4  2005-2006         CBC_D
+5  2007-2008         CBC_E
+6  2009-2010         CBC_F
+7  2011-2012         CBC_G
+8  2013-2014 CBC_H / COT_H
+9  2015-2016 CBC_I / COT_I
+10 2017-2018 CBC_J / COT_J
+11 2017-2020         P_CBC
+
+Mismatch in Description:
+                    description Frequency
+1                Hematocrit (%)        11
+2 Hydroxycotinine Serum (ng/mL)         3
+
+Mismatch in Saslabel:
+                       saslabel Frequency
+1                Hematocrit (%)        11
+2 Hydroxycotinine Serum (ng/mL)         3
+
+Mismatch in Target:
+                                      target Frequency
+1 Both males and females 1 YEARS - 150 YEARS        11
+2 Both males and females 3 YEARS - 150 YEARS         3
+> 
+> system.time(qc_var("LBCBHC", var, cb, tab))
+   user  system elapsed 
+  0.007   0.000   0.008 
+> system.time(qc_var("LBCBHC"))
+   user  system elapsed 
+  0.079   0.001   0.088 
+> 
+> 
+> qc_var("PHAFSTMN")
+Variable:  PHAFSTMN
+Appears in multiple tables within same cycle:
+       cycle                            Tables
+1  1999-2000                                PH
+2  2001-2002                              PH_B
+3  2003-2004                              PH_C
+4  2005-2006         FASTQX_D / GLU_D / OGTT_D
+5  2007-2008         FASTQX_E / GLU_E / OGTT_E
+6  2009-2010         FASTQX_F / GLU_F / OGTT_F
+7  2011-2012         FASTQX_G / GLU_G / OGTT_G
+8  2013-2014 FASTQX_H / GLU_H / INS_H / OGTT_H
+9  2015-2016                  FASTQX_I / INS_I
+10 2017-2018                          FASTQX_J
+11 2017-2020                          P_FASTQX
+
+Mismatch in Description:
+                                                                                                                     description
+1 The time (in minutes) between when the examinee last ate or  drank anything other than water and the time of the venipuncture.
+2  The time (in minutes) between when the examinee last ate or drank anything other than water and the time of the venipuncture.
+3                                                                                            Total length of 'food fast' minutes
+  Frequency
+1         1
+2        12
+3        10
+
+Mismatch in Saslabel:
+                             saslabel Frequency
+1 Total length of 'food fast' minutes        12
+2   Total length of food fast minutes        11
+
+Mismatch in Target:
+                                       target Frequency
+1  Both males and females 1 YEARS - 150 YEARS        11
+2 Both males and females 12 YEARS - 150 YEARS        12
+> qc_var("ENQ100")
+Variable:  ENQ100
+Appears in multiple tables within same cycle:
+      cycle        Tables
+1 2007-2008 ENX_E / SPX_E
+2 2009-2010 ENX_F / SPX_F
+3 2011-2012 ENX_G / SPX_G
+
+Mismatch in Description:
+                                                                                                                                 description
+1  In the past 7 days {have you/has SP} had a cough cold phlegm runny nose or other respiratory illness? Do not count allergies or hay fever
+2 In the past 7 days {have you/has SP} had a cough cold phlegm runny nose or other respiratory illness? Do not count allergies or hay fever.
+  Frequency
+1         3
+2         3
+
+Mismatch in Saslabel:
+                         saslabel Frequency
+1 Cough cold resp illness 7 days?         3
+2        Had respiratory illness?         3
+> 
+> qc_var("LBCBHC")
+Variable:  LBCBHC
+Mismatch in Description:
+                        description Frequency
+1 Beta-hexachlorocyclohexane (ng/g)         2
+2 Beta-hexachlorocyclohexane (pg/g)         4
+
+Mismatch in Saslabel:
+                           saslabel Frequency
+1 Beta-hexachlorocyclohexane (ng/g)         2
+2 Beta-hexachlorocyclohexane (pg/g)         4
+> qc_var("LBXHCT")
+Variable:  LBXHCT
+Appears in multiple tables within same cycle:
+       cycle        Tables
+1  1999-2000         LAB25
+2  2001-2002         L25_B
+3  2003-2004         L25_C
+4  2005-2006         CBC_D
+5  2007-2008         CBC_E
+6  2009-2010         CBC_F
+7  2011-2012         CBC_G
+8  2013-2014 CBC_H / COT_H
+9  2015-2016 CBC_I / COT_I
+10 2017-2018 CBC_J / COT_J
+11 2017-2020         P_CBC
+
+Mismatch in Description:
+                    description Frequency
+1                Hematocrit (%)        11
+2 Hydroxycotinine Serum (ng/mL)         3
+
+Mismatch in Saslabel:
+                       saslabel Frequency
+1                Hematocrit (%)        11
+2 Hydroxycotinine Serum (ng/mL)         3
+
+Mismatch in Target:
+                                      target Frequency
+1 Both males and females 1 YEARS - 150 YEARS        11
+2 Both males and females 3 YEARS - 150 YEARS         3
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.867   0.421   3.205 

@@ -1,0 +1,152 @@
+---
+layout: default
+title: "Phonto Database Interactions"
+output:
+  bookdown::html_document2: default
+  bookdown::pdf_document2: default
+author: Laha Ale, Robert Gentleman, Deepayan Sarkar
+vignette: >
+  %\VignetteIndexEntry{Phonto Database Interactions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library("RPostgres")
+library("DBI")
+```
+
+
+### Introduction
+
+
+
+ In this vignette we describe some of the tools in `phonto` that can be used to access the Postgres database that is running in the Docker container.
+ We assume that the reader is using either a Docker container with a copy of the NHANES database.
+  Details on the NHANES data etc are described in the `Quick Start` vignette and readers should be familiar with that document.
+ 
+## NHANES Database
+
+Complete details of the process are described in the github repository https://github.com/deepayan/nhanes-postgres. Here we will just quickly summarize that information and focus on describing how a user can interact with the database.
+A good grasp of databases, SQL and scientific computing are important prerequisites for being able to effectively interact with the database.
+
+Within the Docker container a fully functional Postgres database is running. That means that you can add new tables, views have user management and access restrictions as needed. These are typically managed through the standard Postgres admin profile.  Users can use any of their favorite tools or GUIs for this such as Azure Data Studio.
+
+There are three schemas in the database, Metadata, Translated and Raw.  Metadata provides concise descriptions of all tables and variables within the NHANES data base.  The Translated and Raw schemas contain one table for each of the NHANES data sets, which were extracted from a single .XPT file.  The Raw schema should have tables whose contents are identical to the contents of the XPT file while the Translated schema has tables where some translation of numeric values into the corresponding factor levels has been carried out.  Other minor modifications of the data may also have been applied to these tables.  Full documentation of that process will be in the https://github.com/deepayan/nhanes-postgres repository.
+
+Briefly, we use the `nhanesA` package to help bootstrap our extract/transform/load (ETL) process.
+This allows us to ensure some degree of compatibility between our approach and that package, which is already widely used and relies on downloading data from the CDC website.
+
+### Schemas
+
+```{r figgender, echo=FALSE, out.width="80%", fig.align = "center", fig.cap="Example: Gender variable"}
+knitr::include_graphics("images/gender.png")
+```
+
+#### Metadata
+
+The Metadata schema consists of four tables **FIXME** a `System` table that mainly has key-value pairs for identifying different variables such as the version number, the date the data were downloaded and other technical information.
+Three tables describe the NHANES metadata: QuestionnaireDescription, QuestionnaireVariables and VariableCodebook.
+
+
+Table                       | Primary Key              | Contents
+--------------------------- | ------------------------ | ---------------------------------------------
+QuestionnaireDescription    | "TableName"              | One row for each table describes its contents
+QuestionnaireVariables      | "Variable" & "TableName" | One row for each variable in the table
+VariableCodebook            | "Variable" & "TableName" | One row for each variable in each table
+
+The contents of these tables can be accessed through three corresponding helper functions, `metadata_tab`, `metadata_var` and `metadata_cb`. They each take arguments that correspond to their primary key, `table` or `variable`.  If missing the entire metadata table is returned and can be manipulated and filtered in R.
+
+The QuestionnaireDescription table has the following columns:
+
+Column           | Description
+---------------- | ------------------------------------------------------------
+TableName        | The name of the table
+Description      | A brief description
+BeginYear        | The first year in the cycle
+EndYear          | The last year in the cycle
+DataGroup        | Which type of data  
+UseConstraints   | Any use constraints - if True then the data are not included
+DocFile          | The URL for the documentation for this table
+DataFile         | The URL for the SAS export file for this table
+DatePublished    | The date the data were published (could be a revision)
+
+
+The URLs and date published provide users with direct access to the primary sources. But these are typically
+not needed, but may be useful for tracking down anomalies.  It is important to know that the CDC often published updates and revisions to data files, so the date published can change, and when it does usually one or both of the DocFile and DataFile have been updated or altered.
+
+#### Raw
+
+In this schema there is one table corresponding to each released table/dataset.
+These are the raw data simply extracted from the SAS XPORT file.  Data corresponding to the RIAGNDER variable shown in Figure~\@ref(fig:figgender). In the table the values for each person will be either 1, 2 or NA.
+Some caution is needed when using these tables directly, as some variables, like ethnicity in Figure~\@ref{fig:figeth} would need special handling as the integer codes should not be treated as numeric.
+
+```{r figeth, echo=FALSE, out.width="80%", fig.align = "center", fig.cap="Example: Ethnicity variable"}
+knitr::include_graphics("images/ethinicity.png")
+```
+
+#### Translated
+
+In this schema there is one table corresponding to each released table/dataset. Now, all categorical data have been translated so that the table corresponding to Figure~\@ref(fig:figgender) will now have the strings `Male` and `Female`, instead of numeric values.  This is will ensure that appropriate models are fit when the covariates represent categorical concepts.
+
+In some cases phenotypes that are primarily numeric have non-numeric values.  These arise for a variety of reasons such as limits of detection, grouping values, failures in getting lab results, the participant refused to answer or does not know the answer.  The complete list is captured in a variable in the `nhanesA` package, which is not exported.  In many cases this transformation makes it simpler to analyze the data and in other cases it introduces some data handling challenges.  A list of the values that are affected during translation are found in the `nhanesA` package.
+
+```{r cleanseNumeric}
+tt = nhanesA:::specialNumericCodes
+length(tt)
+tt[1:5]
+
+```
+
+When translating one can choose to modify some of the none of the columns.
+
+
+### Connecting with the Database Server
+
+In the code below we show how to connect directly to the database and to use `dbGetQuery`
+to interact directly with the database. Users that want that sort of flexibility can simply use `DBI` and `RPostgres` to carry out a range of interactions.
+
+```{r direct2DB}
+con = DBI::dbConnect(RPostgres::Postgres(),
+               dbname = "NhanesLandingZone",
+               host = "localhost",
+               port = 5432L,
+               password = "NHAN35",
+               user = "sa")
+
+dbGetQuery(con,
+      "SELECT * FROM information_schema.schemata where schema_owner = 'sa'")
+```
+
+In the next code chunk we show how to use the `Id` constructor to identify the table you want within the Database heirarchy.
+Note that we first selected from the `Raw` schema so the values in the `RIAGENDR` variable are integers which have not been translated to the sex of the individual. Then when we select from the Translated schema the integer values have been replaced by `Female` and `Male`.
+
+```{r DB2}
+
+ddi = dbGetQuery(con,
+           "SELECT table_name FROM information_schema.tables
+                   WHERE table_schema='Raw'")
+
+nameR = Id(catalog = "NhanesLandingZone", schema = "Raw", table = "DEMO_J")
+nameT = Id(catalog = "NhanesLandingZone", schema = "Translated", table = "DEMO_J")
+dbListFields(con, nameR)
+
+demoj = dbReadTable(con, nameR)
+dim(demoj)
+demoj$RIAGENDR[1:10]
+
+d2 = dbReadTable(con, nameT)
+d2$RIAGENDR[1:10]
+
+```
+
+
+
+
+
+

@@ -1,0 +1,44 @@
+Package: phonto
+Type: Package
+Title: Using NHANES via Epiconnector
+Version: 0.3.6
+Maintainer: Laha Ale <ainilaha@gmail.com>, Robert Gentleman <rgentlem@gmail.com>, Deepayan Sarkar <deepayan.sarkar@gmail.com>
+Authors@R: 
+    c(person("Laha", "Ale", ,"ainilaha@gmail.com", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0002-4070-5289")),
+      person("Robert", "Gentleman", ,"rgentlem@gmail.com", role = "aut"),
+      person("Deepayan", "Sarkar", , "deepayan.sarkar@gmail.com", role = "aut"))
+Author: Laha Ale [aut, cre], Robert Gentleman[aut], Deepayan Sarkar [aut]
+Description: A package to facilitate using NHANES via Epiconnector.
+License: CC BY 4.0 | file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends: 
+    R (>= 4.0)
+Imports:
+    DBI,
+    nhanesA,
+    dplyr,
+    stats
+LazyData: true
+Suggests: 
+    rmarkdown,
+    knitr,
+    testthat (>= 3.0.0),
+    splines,
+    tidyr,
+    DT,
+    odbc,
+    ggplot2,
+    devtools,
+    Hmisc,
+    ggpubr,
+    reshape2,
+    sjPlot,
+    kableExtra,
+    plotROC,
+    survey,
+    RPostgres
+VignetteBuilder: knitr
+Config/testthat/edition: 3

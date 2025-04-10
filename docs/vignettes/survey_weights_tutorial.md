@@ -1,0 +1,336 @@
+---
+layout: default
+title: "Incorporating Survey Weights into NHANES Analysis using R"
+output: html_document
+---
+  
+## Introduction
+In this tutorial, we will delve into the steps for incorporating survey weights into NHANES (National Health and Nutrition Examination Survey) data analysis using the R language. 
+NHANES employs a complex, multistage probability sampling design to collect data that is representative of the United States population. 
+Incorporating survey weights is crucial for making unbiased estimates that are generalizable to the larger population.
+
+## Overview
+In this tutorial, we will leverage the `phonto` package to access the NHANES data and use the `survey` package to perform key statistical analyses. Our primary focus will be on analyzing levels of Glycohemoglobin (HBA1C) across two cycles: 2015-2016 and 2017-2018. 
+
+We'll guide you through selecting the essential weighting and sampling variables to ensure your analyses are unbiased and nationally representative. This will allow you to make more accurate estimates and conclusions from the data.
+
+### Data Extraction and Manipulation
+
+##### Searching for Variables, Selecting Them, and Performing a Joint Query
+In this part of the tutorial, we use the `phonto` package to search for variables of interest, select them, and finally perform a joint query to collect the necessary data. 
+
+In this step, we look for variables that include the term 'Glycohemoglobin' in their descriptions. Subsequently, we retrieve essential demographic data (gender (RIAGENDR), age (RIDAGEYR) and race (RIDRETH3)) along with variables related to survey weighting.
+
+Here is a brief description of each weighting variable pulled: 
+
+ - **SDMVSTRA**: This is the "masked variance pseudo-stratum" variable. In the complex survey design of NHANES, "stratum" is a part of the survey design that refers to a subpopulation of the entire sample, defined based on certain characteristics. "SDMVSTRA" is used to calculate accurate standard errors for estimates. This variable is essential for survey analyses that aim to generalize the results to the entire U.S. population.
+
+ - **SDMVPSU**: This stands for "masked variance pseudo-Primary Sampling Unit (PSU)." PSU is another component of the complex survey design, typically a geographical area from which samples are drawn. Like "SDMVSTRA," this variable is used in the calculation of accurate standard errors and is necessary for the proper application of survey weights.
+
+ - **WTMEC2YR**: This is the "full sample 2-year MEC exam weight." It is a survey weight specifically for participants who completed the Medical Examination Component (MEC) of the NHANES survey. The weight is representative of a 2-year period and is used to make estimates that are generalizable to the U.S. civilian non-institutionalized population.
+
+ - **SDDSRVYR**: This stands for "data release cycle." NHANES data are released in cycles, usually every two years. This variable indicates which data release cycle the data row belongs to, and it helps analysts understand which version of the data they are working with.
+
+ - **WTINT2YR**: This is the "full sample 2-year interview weight." This weight is for individuals who participated in the interview component of the NHANES. Like WTMEC2YR, this weight also helps to make estimates that are representative of the U.S. civilian non-institutionalized population but is specific to those who were interviewed.
+
+
+```r
+# Loading Packages
+library(nhanesA)
+library(phonto)
+library(dplyr)
+library(tidyr)
+library(survey)
+
+# Searching for variables related to Glycohemoglobin
+nhanes_var = nhanesSearch(search_terms = 'Glycohemoglobin')
+
+## We identify the variable LBXGH as the necessary variable
+
+# Selecting demographic variables and Glycohemoglobin variables
+DEMO = c("RIAGENDR","RIDAGEYR","RIDRETH3","SDMVSTRA","SDMVPSU","WTMEC2YR","SDDSRVYR","WTINT2YR")
+HEMO = c('LBXGH')
+
+# Creating a list to pass to the jointQuery function
+cols_df= list(
+  DEMO_I=DEMO,
+  DEMO_J=DEMO,
+  GHB_I = HEMO, 
+  GHB_J = HEMO
+)
+
+# Performing the joint query
+df = jointQuery(cols_df)
+```
+
+
+### Data Pre-processing. 
+
+After obtaining the data, preprocessing is a vital step for the analyses that follow. This includes flagging the subset of observations (identified by SEQN) for inclusion in the analysis, adjusting the weights to correspond to the selected cycles, and generating new variables tailored to your analytical needs, such as age categories.
+
+
+```r
+df = df %>%
+  mutate(MEC4YR = .5*WTMEC2YR,
+         inAnalysis = !is.na(LBXGH),
+         one = 1,
+         Age.Group = cut(RIDAGEYR, 
+                        breaks=c(-Inf,19,29,39,49,59,69,79,Inf),
+                        labels=c("Under 20", "20-29","30-39",
+                                 "40-49","50-59", "60-69", "70-79", "80 and over")))
+```
+
+##### Constructing new weights (`MEC4YR`)
+
+For a comprehensive guide on selecting and constructing appropriate weights in NHANES analyses, you can refer to the following resource: [Weighting Module - NHANES Tutorials](https://wwwn.cdc.gov/nchs/nhanes/tutorials/weighting.aspx).
+
+In this example we are pulling data from two cycles and need to adjust our sampling weight accordingly. Briefly, the NHANES design allows combining data from multiple two-year cycles to improve sample size and statistical reliability, especially for specific subgroups or rare events. When doing this, ensure:
+
+1. Consistency in sample design across cycles.
+2. Matching data items in terms of wording, methods, and eligibility criteria.
+3. Choosing the correct survey weight.
+4. Checking that the estimate remains stable over the combined time period.
+
+Two-year sample weights for NHANES 2001-2002 and later cycles are based on the 2000 Census. NCHS doesn't provide pre-calculated weights for combined cycles but offers guidelines to create them. To combine cycles from 2001-2002 onwards, divide the two-year weights by the number of cycles you're combining. 
+
+In this example, we're gathering data from two cycles, leading us to create a new weight `MEC4YR` by taking `WTMEC2YR` and dividing it by 2 (`MEC4YR = 0.5 * WTMEC2YR`). If we were using data from three cycles, this value would be divided by 3 instead.
+
+Note: Use `WTMEC2YR` for analyses involving Medical Examination Component (MEC) data and `WTINT2YR` for analyses based solely on interview data.
+
+##### Selecting who will remain in the analysis (`inAnalysis`)
+In this analysis, we're focusing on individuals who have HBA1C measurements available.
+
+##### Setting age groups for descriptives (`Age.Group`)
+A variable categorizing individuals into specific age groups.
+
+
+### Survey Design Considerations 
+
+##### Understanding Survey Components
+We create a survey design object to incorporate the complex survey design into our analysis. The identifiers, strata, and weights are all defined in this object.
+
+It's crucial to create your survey design object prior to subsetting your data. This ensures that the complex survey design features, such as stratification and clustering, are accurately captured and applied to the entire dataset, thereby maintaining the integrity of subsequent analyses.
+
+
+```r
+nhanesDesign <- svydesign(id = ~SDMVPSU,  # Primary Sampling Units (PSU)
+                          strata  = ~SDMVSTRA, # Stratification used in the survey
+                          weights = ~MEC4YR,   # Survey weights
+                          nest    = TRUE,      # Whether PSUs are nested within strata
+                          data    = df)
+df_sub = subset(nhanesDesign, inAnalysis)
+```
+
+The `svydesign()` function's arguments are as follows:
+
+ - `id`: The primary sampling unit (PSU), which in this case is SDMVPSU.
+ - `strata`: The stratification variable, which in this case is SDMVSTRA.
+ - `weights`: The survey weights, which we've calculated as MEC4YR.
+ - `nest`: Specifies if the primary sampling units (SDMVPSU) are nested within strata (SDMVSTRA), which is true in this case.
+ - `data`: The dataframe containing the survey data.
+
+The final step refines the survey design object to include only the individuals relevant for our analysis `df_sub`.
+
+## Calculating Summary Statistics
+
+### Calculating the Mean, Quantiles, Variance
+
+The function `svymean()` allows you to compute the weighted average of a given variable, taking the survey design into account. If you're interested in quantiles, `svyquantile()` serves this purpose, while `svyvar()` provides a weighted variance. These calculations can be performed either on the whole dataset or stratified by a particular categorical variable you're interested in examining.
+
+Each of these functions provides output that consists of the following components: 
+
+**Estimate:** This is the weighted mean (quantile, variance, etc) of the variable you're interested in. The weighting accounts for the complex survey design, ensuring the estimate is representative of the population.
+
+**Standard Error (SE):** The standard error gives an indication of how much the sample statistics you've computed is expected to vary from the true population value. A smaller standard error suggests a more reliable estimate.
+
+**Degrees of Freedom (df):** This value is associated with the standard error and is used for hypothesis testing. It essentially represents the number of independent pieces of information that go into the estimate of the mean.
+
+**Confidence Interval:** The confidence interval provides a range of values, derived from the sample, that is likely to contain the true population value. The width of the confidence interval gives us an idea about how uncertain we are about our estimate.
+
+
+By using these functions, you can obtain unbiased, representative summary statistics that account for the complex survey design.
+
+##### Calculating the mean 
+
+
+```r
+# For the entire dataset
+svymean(~LBXGH, df_sub)
+```
+
+```
+##         mean     SE
+## LBXGH 5.6309 0.0168
+```
+
+```r
+# By age group
+svyby(~LBXGH, ~Age.Group, df_sub, svymean)
+```
+
+```
+##               Age.Group    LBXGH         se
+## Under 20       Under 20 5.248089 0.01337947
+## 20-29             20-29 5.238846 0.01645738
+## 30-39             30-39 5.416086 0.02286677
+## 40-49             40-49 5.650850 0.03044787
+## 50-59             50-59 5.906046 0.04650564
+## 60-69             60-69 5.960109 0.03262519
+## 70-79             70-79 6.035181 0.03785423
+## 80 and over 80 and over 6.021082 0.03643621
+```
+
+```r
+# By Gender 
+svyby(~LBXGH, ~RIAGENDR, df_sub, svymean)
+```
+
+```
+##        RIAGENDR    LBXGH         se
+## Female   Female 5.602713 0.01657971
+## Male       Male 5.660871 0.02196502
+```
+
+
+##### Calculating quantiles
+
+
+```r
+# For the entire dataset
+svyquantile(~LBXGH, df_sub, quantiles = c(0.25,0.5,0.75))
+```
+
+```
+## $LBXGH
+##      quantile ci.2.5 ci.97.5         se
+## 0.25      5.2    5.2     5.3 0.02448253
+## 0.5       5.4    5.4     5.5 0.02448253
+## 0.75      5.8    5.8     5.9 0.02448253
+## 
+## attr(,"hasci")
+## [1] TRUE
+## attr(,"class")
+## [1] "newsvyquantile"
+```
+
+```r
+# By age group
+svyby(~LBXGH, ~Age.Group, df_sub, svyquantile, quantiles = c(0.5))
+```
+
+```
+##               Age.Group LBXGH   se.LBXGH
+## Under 20       Under 20   5.2 0.02448253
+## 20-29             20-29   5.2 0.02448253
+## 30-39             30-39   5.3 0.02448253
+## 40-49             40-49   5.5 0.02448253
+## 50-59             50-59   5.6 0.02448253
+## 60-69             60-69   5.7 0.02448253
+## 70-79             70-79   5.8 0.02448253
+## 80 and over 80 and over   5.8 0.02448253
+```
+
+```r
+# By Gender 
+svyby(~LBXGH, ~RIAGENDR, df_sub, svyquantile, quantiles = c(0.5))
+```
+
+```
+##        RIAGENDR LBXGH   se.LBXGH
+## Female   Female   5.4 0.02448253
+## Male       Male   5.4 0.02448253
+```
+
+##### Calculating Variance
+
+
+```r
+# For the entire dataset
+svyvar(~LBXGH, df_sub, quantiles = c(0.25,0.5,0.75))
+```
+
+```
+##       variance     SE
+## LBXGH  0.84532 0.0451
+```
+
+```r
+# By age group
+svyby(~LBXGH, ~Age.Group, df_sub, svyvar)
+```
+
+```
+##               Age.Group     LBXGH         se
+## Under 20       Under 20 0.1378845 0.02691335
+## 20-29             20-29 0.2967796 0.05694366
+## 30-39             30-39 0.5941169 0.08993729
+## 40-49             40-49 0.9696746 0.11336413
+## 50-59             50-59 1.2557899 0.16186276
+## 60-69             60-69 1.0191995 0.08797133
+## 70-79             70-79 0.9381790 0.10250730
+## 80 and over 80 and over 0.7785197 0.09992359
+```
+
+```r
+# By Gender 
+svyby(~LBXGH, ~RIAGENDR, df_sub, svyvar)
+```
+
+```
+##        RIAGENDR     LBXGH         se
+## Female   Female 0.7425426 0.05762848
+## Male       Male 0.9529076 0.07012864
+```
+
+
+## Conducting Simple Regression Analysis
+
+The `svyglm()` function can be used to conduct regression analyses that account for the survey design. Here we'll use it to model Glycated Hemoglobin (HbA1C) levels (`LBXGH`) as a function of age and race.
+
+### Syntax for svyglm
+The syntax for using `svyglm()` is similar to the `glm()` function in base R but designed to work with survey objects.
+
+
+
+To model LBXGH levels by age (RIDAGEYR) and race (RIDRETH3), we can set up our model as follows. This will provide you with the regression coefficients, standard errors, and significance tests that account for the complex survey design. The interpretation of these results would be similar to interpreting output from a standard generalized linear model (glm), but keep in mind that these estimates are weighted to be nationally representative.
+
+
+```r
+model <- svyglm(LBXGH ~ RIDAGEYR + RIDRETH3, design = df_sub, family = gaussian())
+summary(model)
+```
+
+```
+## 
+## Call:
+## svyglm(formula = LBXGH ~ RIDAGEYR + RIDRETH3, design = df_sub, 
+##     family = gaussian())
+## 
+## Survey design:
+## subset(nhanesDesign, inAnalysis)
+## 
+## Coefficients:
+##                                               Estimate Std. Error t value
+## (Intercept)                                  5.1194384  0.0469762 108.979
+## RIDAGEYR                                     0.0168591  0.0004776  35.299
+## RIDRETH3Non-Hispanic Asian                  -0.1268711  0.0521034  -2.435
+## RIDRETH3Non-Hispanic Black                  -0.0056083  0.0543382  -0.103
+## RIDRETH3Non-Hispanic White                  -0.3431137  0.0571023  -6.009
+## RIDRETH3Other Hispanic                      -0.1485993  0.0550412  -2.700
+## RIDRETH3Other Race - Including Multi-Racial -0.1590494  0.0686869  -2.316
+##                                             Pr(>|t|)    
+## (Intercept)                                  < 2e-16 ***
+## RIDAGEYR                                     < 2e-16 ***
+## RIDRETH3Non-Hispanic Asian                    0.0227 *  
+## RIDRETH3Non-Hispanic Black                    0.9187    
+## RIDRETH3Non-Hispanic White                  3.33e-06 ***
+## RIDRETH3Other Hispanic                        0.0125 *  
+## RIDRETH3Other Race - Including Multi-Racial   0.0294 *  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for gaussian family taken to be 0.735125)
+## 
+## Number of Fisher Scoring iterations: 2
+```
+
