@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+*.log
 inst/doc
 # Ignore .DS_Store
 .DS_Store

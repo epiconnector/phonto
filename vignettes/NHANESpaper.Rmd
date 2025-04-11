@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Enhancing Statistical Analysis of Real World Data"
-author: ' Robert Gentleman, Deepayan Sarkar, Laha Ale '
+author: ' Robert Gentleman, Deepayan Sarkar, Laha Ale and Others'
 date: "2024-11-1"
 output: 
   bookdown::pdf_document2:
@@ -44,10 +44,9 @@ object.size(all_demo_data) # ~45 MB
 
 # Introduction
 
-Accessible large complex survey data such as that available from the National Health and Nutrition Examination Survey (NHANES) @cdc2023, the UK Biobank @Sudlow2015, or SEER (<https://seer.cancer.gov/>) has had a transformational effect on many aspects of epidemiology and real world data analysis. NHANES is a widely used resource referenced by thousands of papers every year and over 700 GitHub repositories mention NHANES (based on <https://github.com/topics>). Complex datasets such as NHANES often consist of multiple data files with disjoint metadata and documentation resources. Interacting with these and performing analyses typically involves substantial amounts of preprocessing. This can be time consuming and is, in general, error-prone. Use cases often span multiple outcomes (responses) based on complex modeling of tens to thousands of features. In some cases, data are collected over time, or using different methods (e.g. surveys and imaging) so some amount of integration and alignment is needed. Including exposure data based on geography or season will increase the complexity. As a result, the analyses are not easily replicated or extended.
+Accessible large complex survey data such as that available from the National Health and Nutrition Examination Survey (NHANES) [@cdc2023], the UK Biobank [@Sudlow2015], or SEER (<https://seer.cancer.gov/>) has had a transformational effect on many aspects of epidemiology and real world data analysis. NHANES is a widely used resource referenced by thousands of papers every year and over 700 GitHub repositories mention NHANES (based on <https://github.com/topics>). Complex datasets such as NHANES often consist of multiple data files with disjoint metadata and documentation resources. Interacting with these and performing analyses typically involves substantial amounts of preprocessing. This can be time consuming and is, in general, error-prone. Use cases often span multiple outcomes (responses) based on complex modeling of tens to thousands of features. In some cases, data are collected over time, or using different methods (e.g. surveys and imaging) so integration and alignment is needed. Including exposure data based on geography or season will increase the complexity. As a result, the analyses are not easily replicated or extended.
 
-We believe that there is value in building dedicated user communities for these resources to help address the issues of appropriate use and interpretation, replicability and extensibility. In this paper, we describe our efforts to build a user friendly computational environment that will better support collaboration and further the appropriate scientific uses of the NHANES data. We will also attempt to foster a user community, similar to that of Bioconductor (https://www.bioconductor.org) to help share code and ideas primarily focused on the use and interpretation of NHANES data. [FIXME: website/description here.]
-In addition to supporting individual package development we will also hope to convince authors to share the analysis scripts that they use when creating different outputs, such as published papers.
+We believe that there is value in building dedicated user communities for these resources to help address the issues of appropriate use and interpretation, replicability and extensibility. In this paper, we describe our efforts to build a user friendly computational environment that will better support collaboration and further the appropriate scientific uses of the NHANES data. We will also attempt to foster a user community, similar to that of Bioconductor (https://www.bioconductor.org) to help share code and ideas primarily focused on the use and interpretation of NHANES data. We have created a GitHub organization called Epiconnector (https://epiconnector.github.io/) to facilitate organizing a number of packages and other resources to foster reproducible research using the NHANES data. In addition to supporting individual package development we will also hope to convince authors to share the analysis scripts that they use when creating different outputs, such as published papers.
 
 Our previous work developing the widely used `nhanesA` R package [@ale2024] is a start in that direction.  Here we describe our efforts to build a system that is based on 1) Docker (www.docker.com), which allows for the detailed specification of the computational tools and resources 2) a relational database, Postgres (<https://www.postgresql.org/>), that supports SQL and 3) statistical software, R (<https://www.r-project.org>) and RStudio (<https://posit.co/>) which provide tools to support analysis and reproducibility. By releasing a single component, the Docker container, that has appropriate version numbers and can be run on virtually any hardware we simplify access and enable sharing. An interested scientist should be able to replicate any analysis given the script used by the original authors and the appropriate version of the container.
 
@@ -65,7 +64,7 @@ Most NHANES data are publicly available and the terms of use are available on th
 
 We use manifests (lists of tables) provided by the CDC to identify data and documentation files for downloading. These data are downloaded and preprocessed on a local machine, and saved as a date-stamped snapshot in a GitHub repository (<https://github.com/deepayan/nhanes-snapshot>). We use functionality provided by the `BiocFileCache` package [@shepherd2024] to manage the downloading and updating of the actual files, avoiding multiple downloads of the same file. This is achieved via wrapper functions in the `cachehttp` package (<https://github.com/ccb-hms/cachehttp>). Finally these files are processed via a set of R scripts (<https://github.com/deepayan/nhanes-postgres>) and / or  Python scripts (<https://github.com/ccb-hms/NHANES> and <https://github.com/rsgoncalves/nhanes-metadata>) to create SQL databases, tables, and metadata. This process is largely agnostic to the specific SQL variant used.
 
-To enable users not well-versed in SQL, we also enhance the `nhanesA` package [@ale2024] to use the database as an alternative source for NHANES data in a manner that is completely transparent to the end-user. We do this by using the DBI R package (TODO: cite) as an abstraction layer that can speak to multiple database variants. Individual NHANES data files are mapped to individual tables in the database, and accessing them is thus straightforward. The metadata search functionality, which is more complicated, is implemented via the `dbplyr` package [@wickham2023] which implements a dplyr grammar for DBI-compliant databases.
+To enable users not well-versed in SQL, we also enhance the `nhanesA` package [@ale2024] to use the database as an alternative source for NHANES data in a manner that is completely transparent to the end-user. We do this by using the DBI R package [@rspecialinterestgroupondatabasesr-sig-db2024] as an abstraction layer that can speak to multiple database variants. Individual NHANES data files are mapped to individual tables in the database, and accessing them is thus straightforward. The metadata search functionality, which is more complicated, is implemented via the `dbplyr` package [@wickham2023] which implements a dplyr grammar for DBI-compliant databases.
 
 Within the database we create three schemas: **Metadata** tables that contain information abstracted from the NHANES data, codebooks, documentation downloads (explained in more detail below) and information relevant to the organization of container; **Raw** tables that have a 1-1 correspondence with the data tables provided by the CDC and which have not been altered; and **Translated** tables that have a 1-1 correspondence to the CDC provided tables, but where the categorical variables have been translated to their character values, and in some instances other modifications are made to support appropriate use of the data.
 
@@ -76,7 +75,7 @@ A few public data files are excluded from the database primarily due to their si
 
 Docker is a technology that enables the creation of virtual machines that can run on a variety of hardware such as laptops, servers, or in cloud environments. This provides substantial flexibility in where the computation happens and also provides a straightforward means for defining and sharing the computing environment with others. All they need to do is obtain a copy of the container which could then be run locally. Strictly speaking, Docker is not essential to many of the ideas we propose. Having a Postgres database that runs on a local server would provide most of the benefits. However, the use of Docker containers has an important benefit in terms of reproducibility, as it makes it  easier to ensure that _all_ software components used in an analysis are identifiable and reproducible. There are established mechanisms for sharing Docker containers, as well as functionality for defining and running multi-container applications.
 
-The specific details describing how we constructed the container are given in the GitHub repository <https://github.com/deepayan/nhanes-postgres>. Succinctly, we created a Docker image derived from [rocker/tidyverse](https://hub.docker.com/r/rocker/tidyverse/), which is an Ubuntu GNU/Linux image containing R and RStudio Server. To this, we added a PostgreSQL database containing data from NHANES, as well as the HTML documentation files corresponding to each table.
+The specific details describing how we constructed the container are given in the GitHub repository (<https://github.com/deepayan/nhanes-postgres>). Succinctly, we created a Docker image derived from [rocker/tidyverse](https://hub.docker.com/r/rocker/tidyverse/), which is an Ubuntu GNU/Linux image containing R and RStudio Server. To this, we added a PostgreSQL database containing data from NHANES, as well as the HTML documentation files corresponding to each table.
 
 Any specific instance of the docker container represents a _snapshot_ of an evolving process, wherein both upstream data provided by CDC and the computing environment provided by us are regularly updated. Thus, both users and developers will need programmatic access to version information. The most important pieces of information are the version number of the container (`CONTAINER_VERSION`) which can be matched to the source code on GitHub, and the last date (`COLLECTION_DATE`) on which the data in the database were synced with the upstream CDC source. These are recorded in a `Metadata` table within the database, called `VersionInfo`.
 
@@ -139,19 +138,19 @@ We plan to work on such documentation in the form of vignettes which we hope to 
 
 Because NHANES has evolved over the past 20 years it is important that quality control be carried out when combining data over multiple cycles.  Somewhat innocuous changes in abbreviations, capitalization etc can impact the analysis. More substantial changes, such as units, or using the same variable name for two unrelated concepts that can adversely affect the analysis.
 
-The function `qc_var()` tests for consistency of a single variable across _all_ tables in public NHANES by default. Currently we test for consistency of the metadata at the top of the variable documentation (e.g. Figure \ref{fig:dmdeduc3}) including the SAS Label, the Target (who will be asked the questions), the description (English Text) and whether or not the variable is included in more than one table within a cycle.
+The function `qc_var` tests for consistency of a single variable across _all_ tables in public NHANES by default. Currently we test for consistency of the metadata at the top of the variable documentation (e.g. Figure \ref{fig:dmdeduc3}) including the SAS Label, the Target (who will be asked the questions), the description (English Text) and whether or not the variable is included in more than one table within a cycle.
 
 <!-- 
 FIXME: put in a description of what we do for QC of levels.
 
--->
+FIXME: RG commented the stuff below out as it seems redundant to Table 2.
 
 The output of `qc_var("DMDEDUC3"), show = "saslabel"))` is shown below and indicates that the SAS Label has changed over cycles, albeit in an unimportant way (`Education level` versus `Education Level`).
 
 ```{r qcvar, echo=TRUE}
 print(qc_var("DMDEDUC3"), show = "saslabel")
 ```
-
+-->
 
 ![Documentation for the `SMQ020` and `SMD030` variables. Depending on the answer to `SMQ020`, the next question (`SMD030`) may or may not be asked. The answer to questions not asked will be recorded as 'Missing', which is potentially misleading.](images/smoking-age.png){#fig:smoking}
 
@@ -241,14 +240,14 @@ Fast access makes it practical to combine data across cycles. As a simple, but i
 
 When combining data across cycles more care is needed as there can be substantial inconsistencies. Returning to our `DMDEDUC3` we saw previously that the SAS Label had changed. Deeper inspection reveals that other typographic changes were also made, and at least one of those (see Table \@ref(tab:dmdeduc)) would affect any analysis. Since this variable is categorical it is common to create a `factor` to represent it. And the levels of that factor would be different ('10th Grade' vs '10th grade') and they would be treated as representing different quantities. This is easily remedied, but it must be detected first.
 
-By systematically going through all variables in NHANES, we have identified other serious examples where a variable has changed units of measurement across cycles (`LBCBHC`), and a variable name that has been used to represent two entirely different measurements in some cycles (`LBXHCT`). Thankfully, such examples are rare. 
+By systematically going through all variables in NHANES we have identified several serious issues. In one case a variable has changed units of measurement across cycles (`LBCBHC`) while in another the same variable name has been used to represent two entirely different measurements in some cycles (`LBXHCT`). Thankfully, such examples are rare, but we have certainly not found them all.  A benefit of creating a project like Epiconnector is to allow users to share these important details and thereby lessen the chance that a \textit{finding} is erroneous.
 
 
 ```{r changes, eval=TRUE, echo=FALSE}
 mm = metadata_cb(variable = "DMDEDUC3")
 mm2 = dplyr::filter(mm, TableName %in% demo_all)
 kable(xtabs( ~ TableName + ValueDescription, mm2)[,1:4],
-      caption = "Typographic differences across cycles",
+      caption = "Typographic differences in the names used for categorical data across cycles for DMDEDUC3",
       label = "dmdeduc")
 ```
 
@@ -268,13 +267,18 @@ a) ETL Process: The data extraction, transformation, and loading (ETL) process b
 b) User Community: The system is designed to be versatile, supporting a wide range of programming languages and statistical tools, including but not limited to the built-in RStudio and custom R packages (`nhanesA`, `phonto`), to streamline the analysis process.
 c) Reproducible Outputs: The system facilitates the creation of reproducible outputs such as notebooks, R Markdown files, and GitHub repositories, enabling researchers to share their work and collaborate more effectively.
 
-As a natural follow-up to our current work, we hope to be able to develop a community resource supporting analysis documents, ideally in the form of notebooks, which could be coded in different languages. These would be dynamic in the sense described in @RepRes. Having high-quality tutorials that are based on the tasks that users need to perform, such as the need to account for NHANES survey weights without which most inferences are invalid, will likely increase the awareness of the need for these methods as well as their adoption.
+As a natural follow-up to our current work, we hope to be able to develop a community resource supporting analysis documents, ideally in the form of notebooks, which could be coded in different languages. These would be dynamic in the sense described in [@RepRes]. Having high-quality tutorials that are based on the tasks that users need to perform, such as the need to account for NHANES survey weights without which most inferences are invalid, will likely increase the awareness of the need for these methods as well as their adoption.
 
 More generally, we hope that our work will serve as a template that can be used for other similar studies to enable enhanced reproducibility and the adoption of more sophisticated and appropriate statistical methods. We hope to be able to build a community, similar to the Bioconductor, to foster the development and application of scientific methods for such large-scale studies. We have found that when users are willing to share their code and analyses, others are more easily able to replicate and extend their results. 
 
 
 
-<!-- Lastly we want to call attention to the ideas of frictionless reproducibility and low friction extensibility (e.g. @donoho2024). Enabling others to very easily replicate and extend research results will help everyone make better use of the NHANES data resource.  Good statistical practice can be enabled using the tools we describe. -->
+<!-- 
+FIXME: RG would like to include this - it seems relevant...
+
+Lastly we want to call attention to the ideas of frictionless reproducibility and low friction extensibility (e.g. @donoho2024). Enabling others to very easily replicate and extend research results will help everyone make better use of the NHANES data resource.  Good statistical practice can be enabled using the tools we describe. 
+
+-->
 
 ## Acknowledgements
 
