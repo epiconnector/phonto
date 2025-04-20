@@ -109,20 +109,15 @@ NHANES provides a large amount of data in the form of HTML documentation.  We ha
 The three tables are:
 
   * `QuestionnaireDescriptions` - one row per table, all information about the table, use constraints, download errors
-  * `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation, eg.  Figure \ref{fig:dmdeduc3}
-  * `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables. In Figure \ref{fig:dmdeduc3} it will have the values in the table headed \em{Code or Value}.
+  * `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation, e.g.,  Figure \@ref(fig:dmdeduc3)
+  * `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables. In Figure \@ref(fig:dmdeduc3) it will have the values in the table headed _Code or Value_.
 
 Programatic access to these containers is provided by the functions `metadata_tab`, `metadata_var` and `metadata_cb`.  `metadata_tab` filters its ouput on whether or not the table has use constraints (by default only those that are public are returned). Both `metadata_var` and `metadata_cb` can be filtered on table name which allows users to restrict the return value to a single table, or set of tables.
 
 
-```{r demoEx, echo=FALSE, include=FALSE}
-xx = metadata_var("DMDEDUC3")
-backtick <- "`"
-```
-
 ### Questionnaire Flow and Missing Values
 
-Apart from the need to properly account for the complex survey design of NHANES and the potential issues in combining data across samples, another important aspect of the NHANES design that requires some care arises due to the flow of questions. It is common in survey design to control what questions are asked. Figure \ref{fig:smoking} shows the documentation for the variable `SMD030` and the preceding variable `SMQ020`.  `SMD030` records the age at which a participant started smoking regularly. This is a natural covariate of interest in the study of many diseases including cardiovascular diseases and cancer. If a participant answered `SMQ020` as `No` then question `SMD030` is skipped and the value used for those individuals is `Missing`. Including this variable in a statistical analysis could result in dropping out all individuals with missing values.  In some analyses it may be more appropriate to treat those individuals whow answered No to `SMQ020` as having right-censored values for `SMD030` using the age of the participant at the time of the survey as the censoring value.
+Apart from the need to properly account for the complex survey design of NHANES and the potential issues in combining data across samples, another important aspect of the NHANES design that requires some care arises due to the flow of questions. It is common in survey design to control what questions are asked. Figure \@ref(fig:smoking) shows the documentation for the variable `SMD030` and the preceding variable `SMQ020`.  `SMD030` records the age at which a participant started smoking regularly. This is a natural covariate of interest in the study of many diseases including cardiovascular diseases and cancer. If a participant answered `SMQ020` as `No` then question `SMD030` is skipped and the value used for those individuals is `Missing`. Including this variable in a statistical analysis could result in dropping out all individuals with missing values.  In some analyses it may be more appropriate to treat those individuals who answered `No` to `SMQ020` as having right-censored values for `SMD030` using the age of the participant at the time of the survey as the censoring value. The `get_skip_info` function can be used to identify questions that may have been skipped.
 
 
 <!--
@@ -138,7 +133,7 @@ We plan to work on such documentation in the form of vignettes which we hope to 
 
 Because NHANES has evolved over the past 20 years it is important that quality control be carried out when combining data over multiple cycles.  Somewhat innocuous changes in abbreviations, capitalization etc can impact the analysis. More substantial changes, such as units, or using the same variable name for two unrelated concepts that can adversely affect the analysis.
 
-The function `qc_var` tests for consistency of a single variable across _all_ tables in public NHANES by default. Currently we test for consistency of the metadata at the top of the variable documentation (e.g. Figure \ref{fig:dmdeduc3}) including the SAS Label, the Target (who will be asked the questions), the description (English Text) and whether or not the variable is included in more than one table within a cycle.
+The function `qc_var` tests for consistency of a single variable across _all_ tables in public NHANES by default. Currently we test for consistency of the metadata at the top of the variable documentation (e.g., Figure \@ref(fig:dmdeduc3)) including the SAS Label, the Target (who will be asked the questions), the description (English Text) and whether or not the variable is included in more than one table within a cycle.
 
 <!-- 
 FIXME: put in a description of what we do for QC of levels.
@@ -154,15 +149,10 @@ print(qc_var("DMDEDUC3"), show = "saslabel")
 
 ![Documentation for the `SMQ020` and `SMD030` variables. Depending on the answer to `SMQ020`, the next question (`SMD030`) may or may not be asked. The answer to questions not asked will be recorded as 'Missing', which is potentially misleading.](images/smoking-age.png){#fig:smoking}
 
-```{r smokingEx, echo=FALSE, include=FALSE,eval=FALSE}
-xx = metadata_var("SMD030")
-backtick <- "`"
-```
-
-
-![An overview of the ecosystem provided. Panel a) shows the extract-transform-load (ETL) process. Panel b) Shows examples of tools provide (top) and tools that could easily be used.  Panel c) Notes how these user communities can create reproducible outputs.](images/nhanes1.png){#fig:nhanes1}
 
 # Examples
+
+Detailed examples illustrating the benefits of accessing NHANES data through the Docker container are available at <https://epiconnector.github.io/nhanes-docs/>. Here, we give a few brief examples.
 
 When analyzing data for a single cycle, as is most common, fast access to data is the primary benefit.  For such analysis, we suggest using standard R tools to merge datasets, using `nhanesA` to transparently extract necessary data from the database [@ale2024].  Within a cycle, the `SEQN` variable is a unique identifier for each individual and joins across tables are easily carried out.
 
@@ -222,7 +212,7 @@ CI <-
            vartype = "ci") |> do.call(what = rbind) |> unrowname()
 ```
 
-```{r bmiplot, fig.width=12, fig.height=5, fig.cap="Average BMI for 40-59 year olds by Cycle for four population subgroups. TODO: more detailed caption explaining methodology and giving interpretation.", echo=FALSE}
+```{r bmiplot, fig.width=12, fig.height=5, fig.cap="Average BMI for 40-59 year olds by Cycle for four population subgroups. The estimates and confidence intervals for average BMI within each subgroup is computed using the `estMean` function in the `survey` package, which takes into account the complex survey design of NHANES. Although the confidence intervals overlap substantially, the distinctly increasing trend in all subgroups reflects the obesity epidemic in the US over the period during which the continuous NHANES survey has been running.", echo=FALSE}
 library("lattice")
 library("latticeExtra")
 segplot(factor(cycle) ~ ci_l + ci_u | interaction(RIAGENDR, RIDRETH1),
@@ -237,10 +227,9 @@ run_time <- proc.time() - start_time
 
 Fast access makes it practical to combine data across cycles. As a simple, but interesting, illustration of the type of analyses enabled by this system, Figure \@ref(fig:bmiplot) plots estimates and confidence intervals for the average BMI among 40--59 year olds in four major population subgroups, for 11 NHANES cycles. The confidence intervals, computed separately for each cycle taking into account sampling weights and the two-stage design of the NHANES survey, are nontrivial but not novel in themselves. What is remarkable is that this entire analysis involving 22 separate NHANES tables across 11 cycles took only around `r round(run_time[["elapsed"]])` seconds to run on a typical personal computer.
 
+When combining data across cycles more care is needed as there can be substantial inconsistencies. Returning to our `DMDEDUC3` example, we saw previously that the SAS Label had changed across cycles. Deeper inspection reveals that other typographic changes were also made, and at least one of those (see Table \@ref(tab:dmdeduc)) would affect any analysis. Since the variable is categorical, it is common to create a `factor` to represent it. In such a factor, the levels '10th Grade' and '10th grade' would be considered different, and they would be treated as representing different quantities. This is easily remedied, but it must be detected first.
 
-When combining data across cycles more care is needed as there can be substantial inconsistencies. Returning to our `DMDEDUC3` we saw previously that the SAS Label had changed. Deeper inspection reveals that other typographic changes were also made, and at least one of those (see Table \@ref(tab:dmdeduc)) would affect any analysis. Since this variable is categorical it is common to create a `factor` to represent it. And the levels of that factor would be different ('10th Grade' vs '10th grade') and they would be treated as representing different quantities. This is easily remedied, but it must be detected first.
-
-By systematically going through all variables in NHANES we have identified several serious issues. In one case a variable has changed units of measurement across cycles (`LBCBHC`) while in another the same variable name has been used to represent two entirely different measurements in some cycles (`LBXHCT`). Thankfully, such examples are rare, but we have certainly not found them all.  A benefit of creating a project like Epiconnector is to allow users to share these important details and thereby lessen the chance that a \textit{finding} is erroneous.
+By systematically going through all variables in NHANES we have identified several serious issues. In one case a variable has changed units of measurement across cycles (`LBCBHC`) while in another the same variable name has been used to represent two entirely different measurements in some cycles (`LBXHCT`). Thankfully, such examples are rare, but we have certainly not found them all.  A benefit of creating a project like Epiconnector is to allow users to share these important details and thereby lessen the chance that a _finding_ is erroneous.
 
 
 ```{r changes, eval=TRUE, echo=FALSE}
@@ -258,11 +247,15 @@ kable(xtabs( ~ TableName + ValueDescription, mm2)[,1:4],
 
 # Discussion
 
-The R ecosystem has a long history of fostering reproducibility in scientific computing [@RepRes] and the production of dynamic documents that can be training material, e.g. package vignettes, but have been extended to support authoring of books [@xie2024] and scientific papers where the actual code to create figures and tables is explicitly provided. More recently, Dononho [@donoho2024] and others have touched on the importance of frictionless reproducibility. The system we are proposing would directly support these activities.  And, even more importantly, the approach lends itself to a more general concept of low friction extensibility, where a paper and its results can not only be replicated, but they can be extended and enhanced with relative ease. While science relies on reproducibility, it progresses through extension and adoption of new methods and paradigms.
+The R ecosystem has a long history of fostering reproducibility in scientific computing [@RepRes] and the production of dynamic documents that can be training material, e.g., package vignettes, but have been extended to support authoring of books [@xie2024] and scientific papers where the actual code to create figures and tables is explicitly provided. More recently, Dononho [@donoho2024] and others have touched on the importance of frictionless reproducibility. The system we are proposing would directly support these activities.  And, even more importantly, the approach lends itself to a more general concept of low friction extensibility, where a paper and its results can not only be replicated, but they can be extended and enhanced with relative ease. While science relies on reproducibility, it progresses through extension and adoption of new methods and paradigms.
 
 While NHANES is an extremely valuable data resource it is also, at times, technically challenging to work with due to the many inconsistencies that are bound to appear in any survey of the size and complexity of NHANES.  Some of these are minor and likely inadvertent, and others are responses to external events such as the impact that the global COVID pandemic had on the 2019--2020 cycle. We believe that there is value in having a resource that can provide a mechanism for discussing and resolving these issues so that users will not need to re-discover them. This can lead to agreed upon best practices for revising and adapting. By providing a resource that helps foster reproducibility and sharing, we hope to help users identify and avoid errors in their analyses. 
 
-Although the examples we have used to illustrate our ideas are based on R, similar tools can of course be developed using any other language that can communicate with a database. Figure \ref{fig:nhanes1} summarizes the workflow of our system:
+
+![An overview of the ecosystem provided. Panel a) shows the extract-transform-load (ETL) process. Panel b) Shows examples of tools provide (top) and tools that could easily be used.  Panel c) Notes how these user communities can create reproducible outputs.](images/nhanes1.png){#fig:nhanes1}
+
+
+Although the examples we have used to illustrate our ideas are based on R, similar tools can of course be developed using any other language that can communicate with a database. Figure \@ref{fig:nhanes1} summarizes the workflow of our system:
 a) ETL Process: The data extraction, transformation, and loading (ETL) process begins with crawling data from the CDC website and transforming it into a structured format suitable for analysis, which is then loaded into a PostgreSQL database within the Docker environment.
 b) User Community: The system is designed to be versatile, supporting a wide range of programming languages and statistical tools, including but not limited to the built-in RStudio and custom R packages (`nhanesA`, `phonto`), to streamline the analysis process.
 c) Reproducible Outputs: The system facilitates the creation of reproducible outputs such as notebooks, R Markdown files, and GitHub repositories, enabling researchers to share their work and collaborate more effectively.
@@ -282,7 +275,7 @@ Lastly we want to call attention to the ideas of frictionless reproducibility an
 
 ## Acknowledgements
 
-The database design based on work done at Harvard Medical school with the Center (now Core) for Computational Biomedicine (https://github.com/ccb-hms/nhanes-database) and we have benefited greatly from our interactions with them. 
+The database design is based on work done at Harvard Medical school with the Center (now Core) for Computational Biomedicine (https://github.com/ccb-hms/nhanes-database) and we have benefited greatly from our interactions with them. 
 
 # References
 
@@ -290,7 +283,6 @@ The database design based on work done at Harvard Medical school with the Center
 
 
 # Supplementary Material
-
 
 ## Manifests
 
@@ -313,15 +305,14 @@ Within the database metadata are stored in their own schema. There are three tab
   * `VersionInfo` - provides version information and the date the data were downloaded
 
 
-`QuestionnaireVariables`
 
-This table has one row for each NHANES table/variable combination.  This table captures the information in the variables descriptions, similar to that in Figure S1. Additional information informs on the table name (DEMO_J for the table in Figure S1),  whether there are use constraints.  The IsPhenotype column is one we curate and it indicates whether the variable is a phenotype and could be used as a covariate or a response.  Variables such as individual identifier, SEQN, or the survey weights should not be used as variables in regression models, for example.
+
+The `QuestionnaireVariables` table has one row for each NHANES table/variable combination.  This table captures the information in the variables descriptions, similar to that in Figure S1. Additional information informs on the table name (DEMO_J for the table in Figure S1),  whether there are use constraints.  The IsPhenotype column is one we curate and it indicates whether the variable is a phenotype and could be used as a covariate or a response.  Variables such as individual identifier, SEQN, or the survey weights should not be used as variables in regression models, for example.
 
 ```{r QuestionnaireVariables, echo=FALSE}
 # zz = phonto:::metadata_var()
 # knitr::kable(colnames((zz)), caption="Variables in the Questionnaire Variables Table",
 #    col.names="Variables") |> kable_styling(latex_options = "HOLD_position")
-
 ```
 Table: Variables in the Questionnaire Variables
 
@@ -337,14 +328,13 @@ Target              | Survey target
 
 
 The `VariableCodeBook` table has one row for each possible value for a variable. So,
-for each table, and within that for each variable, there are multiple rows describing the values that variable can have. The column lables of the `VariableCodeBook` table are below.
+for each table, and within that for each variable, there are multiple rows describing the values that variable can have. The column labels of the `VariableCodeBook` table are below.
 
 ```{r variablecodebook, echo=FALSE}
 # zz = phonto:::metadata_cb()
 # knitr::kable(colnames((zz)), caption="Variables in the Variable Codebook Table",
 #    col.names="Variables") |>
 #   kable_styling(latex_options = "HOLD_position")
-
 ```
 Table: Variables in the Variable Codebook
 
@@ -360,14 +350,12 @@ SkipToItem        | Skipped participants that response to the current item
 
 
 
-And last we describe the `QuestionnaireDescriptions` table. It has one row for for each questionnaire or table.  The data include the year that the questionnaire was used, the data group (demographics, laboratory etc), whether there are use constraints on the data, the URLs used to obtain the data and the documentation and the release date. The release date can change if the data are modified by the CDC.
+Lastly we describe the `QuestionnaireDescriptions` table. It has one row for for each questionnaire or table.  The data include the year that the questionnaire was used, the data group (demographics, laboratory etc), whether there are use constraints on the data, the URLs used to obtain the data and the documentation and the release date. The publication date can change if the data are modified by the CDC.
 
 ```{r QuestionnaireDescriptions, echo=FALSE}
 # zz = phonto:::metadata_tab()
 # knitr::kable(colnames((zz)), caption="Variables in the Questionnaire Descriptions Table",
 #    col.names="Variables") |> kable_styling(latex_options = "HOLD_position")
-
-
 ```
 Table: Variables in the Questionnaire Descriptions 
 
@@ -375,8 +363,8 @@ Variable          | Description
 ---------------   | ------------------------ 
 TableName         | Name of table corresponding to the data file
 Description       | Data File Name 
-BeginYear         | Begin year of the cycle  
-EndYear           | End year of the cycle   
+BeginYear         | Begin year of the cycle
+EndYear           | End year of the cycle
 DataGroup         | Data group 
 UseConstraints    | Whether the data is restricted
 DocFile           | URL for the codebook/documentation 
