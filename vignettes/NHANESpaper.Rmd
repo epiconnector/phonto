@@ -40,7 +40,11 @@ all_demo_data <- sapply(demo_all, nhanes, simplify = FALSE)
 object.size(all_demo_data) # ~45 MB
 ## sapply(all_demo_data, dim)
 ```
+# Abstract
 
+The National Health and Nutrition Examination Survey (NHANES) provides extensive public data on demographics, health, and nutrition, collected in two-year cycles since 1999. Although invaluable for epidemiological and health-related research, the complexity of NHANES data, involving numerous files and disjoint metadata, makes accessing, managing, and analyzing these datasets challenging. This paper presents a reproducible computational environment built upon Docker containers, PostgreSQL databases, and R/RStudio, designed to streamline NHANES data management, facilitate rigorous quality control, and simplify analyses across multiple survey cycles. We introduce specialized tools, such as the enhanced nhanesA R package and the phonto package, to provide fast access to data, manage metadata, and handle complexities arising from questionnaire design and cross-cycle data inconsistencies. Furthermore, we describe the Epiconnector platform, established to foster collaborative sharing of code, analytical scripts, and best practices, thereby significantly enhancing the reproducibility, extensibility, and robustness of scientific research using NHANES data.
+
+Database URL: https://epiconnector.github.io
 
 # Introduction
 
