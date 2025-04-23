@@ -2,7 +2,10 @@
 layout: default
 title: "Enhancing Statistical Analysis of Real World Data"
 author: ' Robert Gentleman, Deepayan Sarkar, Laha Ale and Others'
-date: "2024-11-1"
+date: "2025-04-23"
+
+abstract: "The National Health and Nutrition Examination Survey (NHANES) provides extensive public data on demographics, health, and nutrition, collected in two-year cycles since 1999. Although invaluable for epidemiological and health-related research, the complexity of NHANES data, involving numerous files and disjoint metadata, makes accessing, managing, and analyzing these datasets challenging. This paper presents a reproducible computational environment built upon Docker containers, PostgreSQL databases, and R/RStudio, designed to streamline NHANES data management, facilitate rigorous quality control, and simplify analyses across multiple survey cycles. We introduce specialized tools, such as the enhanced nhanesA R package and the phonto R package, to provide fast access to data, to help manage metadata, and to handle complexities arising from questionnaire design and cross-cycle data inconsistencies. Furthermore, we describe the Epiconnector platform, established to foster collaborative sharing of code, analytical scripts, and best practices, which taken together can significantly enhance the reproducibility, extensibility, and robustness of scientific research using NHANES data."
+
 output: 
   bookdown::pdf_document2:
     toc: false
@@ -40,11 +43,10 @@ all_demo_data <- sapply(demo_all, nhanes, simplify = FALSE)
 object.size(all_demo_data) # ~45 MB
 ## sapply(all_demo_data, dim)
 ```
-# Abstract
 
-The National Health and Nutrition Examination Survey (NHANES) provides extensive public data on demographics, health, and nutrition, collected in two-year cycles since 1999. Although invaluable for epidemiological and health-related research, the complexity of NHANES data, involving numerous files and disjoint metadata, makes accessing, managing, and analyzing these datasets challenging. This paper presents a reproducible computational environment built upon Docker containers, PostgreSQL databases, and R/RStudio, designed to streamline NHANES data management, facilitate rigorous quality control, and simplify analyses across multiple survey cycles. We introduce specialized tools, such as the enhanced nhanesA R package and the phonto R package, to provide fast access to data, to help manage metadata, and to handle complexities arising from questionnaire design and cross-cycle data inconsistencies. Furthermore, we describe the Epiconnector platform, established to foster collaborative sharing of code, analytical scripts, and best practices, which taken together can significantly enhance the reproducibility, extensibility, and robustness of scientific research using NHANES data.
 
 Database URL: https://epiconnector.github.io
+
 
 # Introduction
 
@@ -52,7 +54,7 @@ Accessible large complex survey data such as that available from the National He
 
 We believe that there is value in building dedicated user communities for these resources to help address the issues of appropriate use and interpretation, replicability and extensibility. In this paper, we describe our efforts to build a user friendly computational environment that will better support collaboration and further the appropriate scientific uses of the NHANES data. We will also attempt to foster a user community, similar to that of Bioconductor (https://www.bioconductor.org) to help share code and ideas primarily focused on the use and interpretation of NHANES data. We have created a GitHub organization called Epiconnector (https://epiconnector.github.io/) to facilitate organizing a number of packages and other resources to foster reproducible research using the NHANES data. In addition to supporting individual package development we will also hope to convince authors to share the analysis scripts that they use when creating different outputs, such as published papers.
 
-Our previous work developing the widely used `nhanesA` R package [@ale2024] is a start in that direction.  Here we describe our efforts to build a system that is based on 1) Docker (www.docker.com), which allows for the detailed specification of the computational tools and resources 2) a relational database, Postgres (<https://www.postgresql.org/>), that supports SQL and 3) statistical software, R (<https://www.r-project.org>) and RStudio (<https://posit.co/>) which provide tools to support analysis and reproducibility. By releasing a single component, the Docker container, that has appropriate version numbers and can be run on virtually any hardware we simplify access and enable sharing. An interested scientist should be able to replicate any analysis given the script used by the original authors and the appropriate version of the container.
+Our previous work developing the widely used `nhanesA` R package [@ale2024] is a start in that direction.  Here we describe our efforts to build a system that is based on 1) Docker (www.docker.com), which allows for the detailed specification of the computational tools and resources, 2) a relational database, Postgres (<https://www.postgresql.org/>), that supports SQL and 3) statistical software, R (<https://www.r-project.org>) and RStudio (<https://posit.co/>) which provide tools to support analysis and reproducibility. By releasing a single component, the Docker container, that has appropriate version numbers and can be run on virtually any hardware we simplify access and enable sharing. An interested scientist should be able to replicate any analysis given the script used by the original authors and the appropriate version of the container.
 
 # Methods
 
@@ -112,9 +114,11 @@ NHANES provides a large amount of data in the form of HTML documentation.  We ha
 
 The three tables are:
 
-  * `QuestionnaireDescriptions` - one row per table giving information about the table such as: use constraints, download errors; the table is accessible via `phonto::metadata_tab`
-  * `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation; the table is accessible via `phonto::metadata_var`, e.g.,  in Figure \@ref(fig:dmdeduc3) the lines of text above the data table
-  * `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables; the table is accessible via `phonto::metadata_cb`;  in Figure \@ref(fig:dmdeduc3) it will have one row for each row of the table
+  * `QuestionnaireDescriptions` - one row per table giving information about the table such as: use constraints, download errors; the `QuestionnaireDescriptions` table is accessible via `phonto::metadata_tab`
+
+* `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation, e.g., the lines of text above the table of values in Figure \@ref(fig:dmdeduc3); the `QuestionnaireVariables` table is accessible via `phonto::metadata_var`
+
+* `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables; e.g., it will have one row for each row of the table in Figure \@ref(fig:dmdeduc3); the `VariableCodebook` table is accessible via `phonto::metadata_cb`
 
 Programatic access to these containers is provided by the functions `metadata_tab`, `metadata_var` and `metadata_cb`.  `metadata_tab` filters its ouput on whether or not the table has use constraints (by default only those that are public are returned). Both `metadata_var` and `metadata_cb` can be filtered on table name which allows users to restrict the return value to a single table, or set of tables.
 
@@ -278,13 +282,15 @@ In Figure S1 we show the documentation from the DEMO table for cycle J.
 
 ## The Metadata Schema
 
-Within the database metadata are stored in their own schema. There are three tables that describe the NHANES data:
+Within the database metadata are stored in their own schema. There are four tables that describe the NHANES data:
 
-  * `QuestionnaireDescriptions` - one row per table, all information about the table, use constraints, download errors
-  * `QuestionnaireVariables` - one row per variable gives the data from the HTML documentation, translation errors go here, excluded tables go here 
-  * `VariableCodebook` - one row for each possible value for each variable; describes the coded values for all categorical variables.
-  * `VersionInfo` - provides version information and the date the data were downloaded
+* `QuestionnaireDescriptions` - one row per table, all information about the table, use constraints, download errors
 
+* `QuestionnaireVariables` - one row per variable gives the data from the HTML documentation, translation errors go here, excluded tables go here 
+
+* `VariableCodebook` - one row for each possible value for each variable; describes the coded values for all categorical variables.
+
+* `VersionInfo` - provides version information and the date the data were downloaded
 
 
 
