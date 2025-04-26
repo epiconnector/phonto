@@ -1,10 +1,11 @@
 ---
 layout: default
 title: "Enhancing Statistical Analysis of Real World Data"
-author: ' Robert Gentleman, Deepayan Sarkar, Laha Ale and Others'
+author: ' Robert Gentleman, Deepayan Sarkar, Sam Pullman, Laha Ale and Others'
 date: "2025-04-23"
 
 abstract: "The National Health and Nutrition Examination Survey (NHANES) provides extensive public data on demographics, health, and nutrition, collected in two-year cycles since 1999. Although invaluable for epidemiological and health-related research, the complexity of NHANES data, involving numerous files and disjoint metadata, makes accessing, managing, and analyzing these datasets challenging. This paper presents a reproducible computational environment built upon Docker containers, PostgreSQL databases, and R/RStudio, designed to streamline NHANES data management, facilitate rigorous quality control, and simplify analyses across multiple survey cycles. We introduce specialized tools, such as the enhanced nhanesA R package and the phonto R package, to provide fast access to data, to help manage metadata, and to handle complexities arising from questionnaire design and cross-cycle data inconsistencies. Furthermore, we describe the Epiconnector platform, established to foster collaborative sharing of code, analytical scripts, and best practices, which taken together can significantly enhance the reproducibility, extensibility, and robustness of scientific research using NHANES data."
+
 
 output: 
   bookdown::pdf_document2:
@@ -24,6 +25,12 @@ vignette: >
 csl: vancouver.csl
 ---
 
+<!-- Additional Author Info 
+   Samantha Pullman, email is skpullman.dev@gmail.com
+
+  Rafael: https://orcid.org/0000-0003-1255-0125
+
+-->
 
 ```{r, include=FALSE, eval=FALSE}
 ##turn this on if you get Latex errors
@@ -64,7 +71,7 @@ Key design goals include: (a) engineering the system so that any relational data
 
 ## Creating the Database
 
-The Continuous NHANES is an ongoing survey conducted by the Centers for Disease Control and Prevention (CDC), the national public health agency of the United States. The CDC makes data from the survey available online on its website. Starting from 1999--2000, data was collected in two-year cycles, and made available in the form of a large number of datasets or “tables” for each cycle, until data collection for the 2019--20 cycle was interrupted by the COVID pandemic. The raw data for each table is available as an XPT file in the SAS Transport Format [@sas2021xport], along with a corresponding webpage providing detailed documentation about the table. This webpage usually contains a codebook with entries for each variable in the table, as well as general background information on the data collected, often including pointers and suggestions on how to interpret and analyze the data. The codebook consists of a listing of all survey questions in a format that describes the actual data collected. These codebooks detail what data was collected, how it was coded and the target group, which can limit who is asked to answer. This information is used to translate the raw data into a form suitable for analysis.
+The Continuous NHANES is an ongoing survey conducted by the Centers for Disease Control and Prevention (CDC), the national public health agency of the United States. The CDC makes data from the survey available online on its website. Starting from 1999--2000, data was collected in two-year cycles, and made available in the form of a large number of datasets or “tables” for each cycle, until data collection for the 2019--20 cycle was interrupted by the COVID pandemic. The raw data for each table is available as an XPT file in the SAS Transport Format [@sas2021xport], along with a corresponding webpage, e.g. Figure \@ref(fig:dmdeduc3), providing detailed documentation about the table. This webpage usually contains a codebook with entries for each variable in the table, as well as general background information on the data collected, often including pointers and suggestions on how to interpret and analyze the data. The codebook consists of a listing of all survey questions in a format that describes the actual data collected. These codebooks detail what data was collected, how it was coded and the target group, which can limit who is asked to answer. This information is used to translate the raw data into a form suitable for analysis.
 
 Most NHANES data are publicly available and the terms of use are available on the NHANES website. Some data require special permission to access and are referred to as *restricted access*. Our database contains only the publicly available data. However, documentation is available for all data, and users can search the documentation of restricted access data, although they will need to apply to the CDC for permission to use those data.
 
@@ -72,7 +79,7 @@ We use manifests (lists of tables) provided by the CDC to identify data and docu
 
 To enable users not well-versed in SQL, we also enhance the `nhanesA` package [@ale2024] to use the database as an alternative source for NHANES data in a manner that is completely transparent to the end-user. We do this by using the DBI R package [@rspecialinterestgroupondatabasesr-sig-db2024] as an abstraction layer that can speak to multiple database variants. Individual NHANES data files are mapped to individual tables in the database, and accessing them is thus straightforward. The metadata search functionality, which is more complicated, is implemented via the `dbplyr` package [@wickham2023] which implements a dplyr grammar for DBI-compliant databases.
 
-Within the database we create three schemas: **Metadata** tables that contain information abstracted from the NHANES data, codebooks, documentation downloads (explained in more detail below) and information relevant to the organization of container; **Raw** tables that have a 1-1 correspondence with the data tables provided by the CDC and which have not been altered; and **Translated** tables that have a 1-1 correspondence to the CDC provided tables, but where the categorical variables have been translated to their character values, and in some instances other modifications are made to support appropriate use of the data.
+Within the database we create three schemas: **Metadata** tables that contain information abstracted from the NHANES data, codebooks, documentation downloads (explained in more detail below) and information relevant to the organization of the Docker container; **Raw** tables that have a 1-1 correspondence with the data tables provided by the CDC and which have not been altered; and **Translated** tables that have a 1-1 correspondence to the CDC provided tables, but where the categorical variables have been translated to their character values, and in some instances other modifications are made to support appropriate use of the data.
 
 A few public data files are excluded from the database primarily due to their size and the specialized data they contain. Some oral microbiome testing data (collected in two cycles) are omitted because they are in non-standard formats. Four datasets containing imputed Dual Energy X-ray absorptiometry data are omitted as their documentation is in non-standard format. In addition, some files are excluded because they are unusually large; most of these are records of physical activity monitors given to participants of the survey. These datasets can be downloaded from the CDC website and easily integrated into any workflow.
 
@@ -83,23 +90,16 @@ Docker is a technology that enables the creation of virtual machines that can ru
 
 The specific details describing how we constructed the container are given in the GitHub repository (<https://github.com/deepayan/nhanes-postgres>). Succinctly, we created a Docker image derived from [rocker/tidyverse](https://hub.docker.com/r/rocker/tidyverse/), which is an Ubuntu GNU/Linux image containing R and RStudio Server. To this, we added a PostgreSQL database containing data from NHANES, as well as the HTML documentation files corresponding to each table.
 
-Any specific instance of the docker container represents a _snapshot_ of an evolving process, wherein both upstream data provided by CDC and the computing environment provided by us are regularly updated. Thus, both users and developers will need programmatic access to version information. The most important pieces of information are the version number of the container (`CONTAINER_VERSION`) which can be matched to the source code on GitHub, and the last date (`COLLECTION_DATE`) on which the data in the database were synced with the upstream CDC source. These are recorded in a `Metadata` table within the database, called `VersionInfo`.
+Any specific instance of the Docker container represents a _snapshot_ of an evolving process, wherein both upstream data provided by CDC and the computing environment provided by us are regularly updated. Thus, both users and developers will need programmatic access to version information. The most important pieces of information are the version number of the container (`CONTAINER_VERSION`) which can be matched to the source code on GitHub, and the last date (`COLLECTION_DATE`) on which the data in the database were synced with the upstream CDC source. These are recorded in a `Metadata` table within the database, called `VersionInfo`.
 
 Variable            | Value                    
 -----------------   | ----------------------------------- 
 `CONTAINER_VERSION` | Version number for the Container        
 `COLLECTION_DATE`   | Date data were downloaded 
 
-Developers will also need to know how to connect to the database in the first place. For them, the docker container defines environment variables which indicate which database variant is running, the port on which it is running, etc. It also defines the `NHANES_TABLE_BASE` variable which provides the location of the HTML documentation inside the container. The `nhanesA` package looks for these environment variables when it starts up, and connects to the database and local documentation automatically if they are available. Other tools, perhaps using Python or some other environment, can similarly use these environment variables when running inside the docker. Users who are connecting to the database from outside will, of course, need to know these details beforehand to connect, but they will still be able to query the container version and collection date from the database once they are connected.
+Developers will also need to know how to connect to the database in the first place. For them, the Docker container defines environment variables which indicate which database variant is running, the port on which it is running, etc. It also defines the `NHANES_TABLE_BASE` variable which provides the location of the HTML documentation inside the container. The `nhanesA` package looks for these environment variables when it starts up, and connects to the database and local documentation automatically if they are available. Other tools, perhaps using Python or some other environment, can similarly use these environment variables when running inside the Docker container. Users who are connecting to the database from outside will, of course, need to know these details beforehand to connect, but they will still be able to query the container version and collection date from the database once they are connected.
 
 
-<!-- 
-
-For users that are running their analysis inside the Docker container there are environment variables that provide the necessary details.   While for users that are accessing the database but not logging in to the container we have created a Metadatatable table,VersionInfo, that can be accessed using SQL.
-
-Within the Linux enviroment we set environment variables, `NHANES_TABLE_BASE` which provides the location of the HTML documentation inside the container and `EPICONDUCTOR_CONTAINER_DB` which is a text string describing the database being used.  Optionally the environment variable `EPICONDUCTOR_CONTAINER_VERSION` can be set, but it should be the same as the value of `CONTAINER_VERSION` in the database.
-
--->
 
 ## Specialized Code
 
@@ -127,14 +127,6 @@ Programatic access to these containers is provided by the functions `metadata_ta
 
 Apart from the need to properly account for the complex survey design of NHANES and the potential issues in combining data across samples, another important aspect of the NHANES design that requires some care arises due to the flow of questions. It is common in survey design to control what questions are asked. Figure \@ref(fig:smoking) shows the documentation for the variable `SMD030` and the preceding variable `SMQ020`.  `SMD030` records the age at which a participant started smoking regularly. This is a natural covariate of interest in the study of many diseases including cardiovascular diseases and cancer. If a participant answered `SMQ020` as `No` then question `SMD030` is skipped and the value used for those individuals is `Missing`. Including this variable in a statistical analysis could result in dropping out all individuals with missing values.  In some analyses it may be more appropriate to treat those individuals who answered `No` to `SMQ020` as having right-censored values for `SMD030` using the age of the participant at the time of the survey as the censoring value. The `get_skip_info` function can be used to identify questions that may have been skipped.
 
-
-<!--
-
-Delving into these issues in detail is beyond the scope of this article. However, in-depth articles documenting these issues are useful for the wider community of data analysts working on large complex surveys such as NHANES. 
-
-We plan to work on such documentation in the form of vignettes which we hope to make available at a central website, where we hope to get further contributions from the wider NHANES community. We have made an initial prototype of such a project at <https://epiconnector.github.io/nhanes-docs/>.
-
--->
 
 
 ### Quality Control
@@ -249,7 +241,7 @@ While NHANES is an extremely valuable data resource it is also, at times, techni
 
 Although the examples we have used to illustrate our ideas are based on R, similar tools can of course be developed using any other language that can communicate with a database. 
 Figure \@ref(fig:nhanes1) summarizes the workflow of our system:
-a) ETL Process: The data extraction, transformation, and loading (ETL) process begins with crawling data from the CDC website and transforming it into a structured format suitable for analysis, which is then loaded into a PostgreSQL database within the Docker environment.
+a) ETL Process: The data extraction, transformation, and loading (ETL) process begins with crawling data from the CDC website and transforming it into a structured format suitable for analysis, which is then loaded into a PostgreSQL database within the Docker container.
 b) User Community: The system is designed to be versatile, supporting a wide range of programming languages and statistical tools, including but not limited to the built-in RStudio and custom R packages (`nhanesA`, `phonto`), to streamline the analysis process.
 c) Reproducible Outputs: The system facilitates the creation of reproducible outputs such as notebooks, R Markdown files, and GitHub repositories, enabling researchers to share their work and collaborate more effectively.
 
