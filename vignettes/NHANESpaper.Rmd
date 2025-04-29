@@ -26,9 +26,11 @@ csl: vancouver.csl
 ---
 
 <!-- Additional Author Info 
-   Samantha Pullman, email is skpullman.dev@gmail.com
+   Samantha Pullman, no affiliation, email is skpullman.dev@gmail.com
 
-  Rafael: https://orcid.org/0000-0003-1255-0125
+  Rafael:
+  Center for Biomedical Informatics Research, Stanford University, 3180 Porter Dr, Palo Alto, CA 94304, United States
+  https://orcid.org/0000-0003-1255-0125
 
 -->
 
@@ -252,7 +254,7 @@ More generally, we hope that our work will serve as a template that can be used 
 
 ## Acknowledgements
 
-The database design is based on work done at Harvard Medical school with the Center (now Core) for Computational Biomedicine (https://github.com/ccb-hms/nhanes-database) and we have benefited greatly from our interactions with them. 
+The database design is based on work done at Harvard Medical school with the Center (now Core) for Computational Biomedicine (https://github.com/ccb-hms/nhanes-database) and we have benefited greatly from our interactions with them.  In particular we thank Jason Payne for his work.
 
 # References
 
