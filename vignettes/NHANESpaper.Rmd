@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Enhancing Statistical Analysis of Real World Data"
-author: ' Robert Gentleman, Deepayan Sarkar, Sam Pullman, Laha Ale and Others'
+author: 'Laha Ale, Robert Gentleman, Sam Pullman, Nathan Palmer, Rafael Goncalves and Deepayan Sarkar'
 date: "2025-04-23"
 
 abstract: "The National Health and Nutrition Examination Survey (NHANES) provides extensive public data on demographics, health, and nutrition, collected in two-year cycles since 1999. Although invaluable for epidemiological and health-related research, the complexity of NHANES data, involving numerous files and disjoint metadata, makes accessing, managing, and analyzing these datasets challenging. This paper presents a reproducible computational environment built upon Docker containers, PostgreSQL databases, and R/RStudio, designed to streamline NHANES data management, facilitate rigorous quality control, and simplify analyses across multiple survey cycles. We introduce specialized tools, such as the enhanced nhanesA R package and the phonto R package, to provide fast access to data, to help manage metadata, and to handle complexities arising from questionnaire design and cross-cycle data inconsistencies. Furthermore, we describe the Epiconnector platform, established to foster collaborative sharing of code, analytical scripts, and best practices, which taken together can significantly enhance the reproducibility, extensibility, and robustness of scientific research using NHANES data."
@@ -26,9 +26,12 @@ csl: vancouver.csl
 ---
 
 <!-- Additional Author Info 
+
    Samantha Pullman, no affiliation, email is skpullman.dev@gmail.com
 
-  Rafael:
+  Nathan Palmer, nathan_Palmer@hms.harvard.edu, Director, Core for Computational Biomedicine, Harvard Medical School
+  
+  Rafael Gonçalves:
   Center for Biomedical Informatics Research, Stanford University, 3180 Porter Dr, Palo Alto, CA 94304, United States
   https://orcid.org/0000-0003-1255-0125
 
@@ -61,7 +64,8 @@ Database URL: https://epiconnector.github.io
 
 Accessible large complex survey data such as that available from the National Health and Nutrition Examination Survey (NHANES) [@cdc2023], the UK Biobank [@Sudlow2015], or SEER (<https://seer.cancer.gov/>) has had a transformational effect on many aspects of epidemiology and real world data analysis. NHANES is a widely used resource referenced by thousands of papers every year and over 700 GitHub repositories mention NHANES (based on <https://github.com/topics>). Complex datasets such as NHANES often consist of multiple data files with disjoint metadata and documentation resources. Interacting with these and performing analyses typically involves substantial amounts of preprocessing. This can be time consuming and is, in general, error-prone. Use cases often span multiple outcomes (responses) based on complex modeling of tens to thousands of features. In some cases, data are collected over time, or using different methods (e.g. surveys and imaging) so integration and alignment is needed. Including exposure data based on geography or season will increase the complexity. As a result, the analyses are not easily replicated or extended.
 
-We believe that there is value in building dedicated user communities for these resources to help address the issues of appropriate use and interpretation, replicability and extensibility. In this paper, we describe our efforts to build a user friendly computational environment that will better support collaboration and further the appropriate scientific uses of the NHANES data. We will also attempt to foster a user community, similar to that of Bioconductor (https://www.bioconductor.org) to help share code and ideas primarily focused on the use and interpretation of NHANES data. We have created a GitHub organization called Epiconnector (https://epiconnector.github.io/) to facilitate organizing a number of packages and other resources to foster reproducible research using the NHANES data. In addition to supporting individual package development we will also hope to convince authors to share the analysis scripts that they use when creating different outputs, such as published papers.
+There have been several efforts to harmonize and simplify access to these data, perhaps most extensively described in (https://www.medrxiv.org/content/10.1101/2023.02.06.23284573v1).
+We too believe that there is value in simplifying access and more importantly building dedicated user communities for these resources to help address the issues of appropriate use and interpretation, replicability and extensibility. In this paper, we describe our efforts to build a user friendly computational environment that will better support collaboration and further the appropriate scientific uses of the NHANES data. We will also attempt to foster a user community, similar to that of Bioconductor (https://www.bioconductor.org) to help share code and ideas primarily focused on the use and interpretation of NHANES data. We have created a GitHub organization called Epiconnector (https://epiconnector.github.io/) to facilitate organizing a number of packages and other resources to foster reproducible research using the NHANES data. In addition to supporting individual package development we will also hope to convince authors to share the analysis scripts that they use when creating different outputs, such as published papers.
 
 Our previous work developing the widely used `nhanesA` R package [@ale2024] is a start in that direction.  Here we describe our efforts to build a system that is based on 1) Docker (www.docker.com), which allows for the detailed specification of the computational tools and resources, 2) a relational database, Postgres (<https://www.postgresql.org/>), that supports SQL and 3) statistical software, R (<https://www.r-project.org>) and RStudio (<https://posit.co/>) which provide tools to support analysis and reproducibility. By releasing a single component, the Docker container, that has appropriate version numbers and can be run on virtually any hardware we simplify access and enable sharing. An interested scientist should be able to replicate any analysis given the script used by the original authors and the appropriate version of the container.
 
