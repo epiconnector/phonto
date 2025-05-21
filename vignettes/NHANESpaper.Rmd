@@ -80,7 +80,7 @@ The Continuous NHANES is an ongoing survey conducted by the Centers for Disease 
 
 Most NHANES data are publicly available and the terms of use are available on the NHANES website. Some data require special permission to access and are referred to as *restricted access*. Our database contains only the publicly available data. However, documentation is available for all data, and users can search the documentation of restricted access data, although they will need to apply to the CDC for permission to use those data.
 
-We use manifests (lists of tables) provided by the CDC to identify data and documentation files for downloading. These data are downloaded and preprocessed on a local machine, and saved as a date-stamped snapshot in a GitHub repository (<https://github.com/deepayan/nhanes-snapshot>). We use functionality provided by the `BiocFileCache` package [@shepherd2024] to manage the downloading and updating of the actual files, avoiding multiple downloads of the same file. This is achieved via wrapper functions in the `cachehttp` package (<https://github.com/ccb-hms/cachehttp>). Finally these files are processed via a set of R scripts (<https://github.com/deepayan/nhanes-postgres>) and / or  Python scripts (<https://github.com/ccb-hms/NHANES> and <https://github.com/rsgoncalves/nhanes-metadata>) to create SQL databases, tables, and metadata. This process is largely agnostic to the specific SQL variant used.
+We use manifests (lists of tables) provided by the CDC to identify data and documentation files for downloading. These data are downloaded and preprocessed on a local machine, and saved as a date-stamped snapshot in a GitHub repository (<https://github.com/deepayan/nhanes-snapshot>). We use functionality provided by the `BiocFileCache` package [@shepherd2024] to manage the downloading and updating of the actual files, avoiding multiple downloads of the same file. This is achieved via wrapper functions in the `cachehttp` package (<https://github.com/ccb-hms/cachehttp>). Finally these files are processed via a set of R scripts (<https://github.com/epiconnector/nhanes-postgres>) and / or  Python scripts (<https://github.com/ccb-hms/NHANES> and <https://github.com/rsgoncalves/nhanes-metadata>) to create SQL databases, tables, and metadata. This process is largely agnostic to the specific SQL variant used.
 
 To enable users not well-versed in SQL, we also enhance the `nhanesA` package [@ale2024] to use the database as an alternative source for NHANES data in a manner that is completely transparent to the end-user. We do this by using the DBI R package [@rspecialinterestgroupondatabasesr-sig-db2024] as an abstraction layer that can speak to multiple database variants. Individual NHANES data files are mapped to individual tables in the database, and accessing them is thus straightforward. The metadata search functionality, which is more complicated, is implemented via the `dbplyr` package [@wickham2023] which implements a dplyr grammar for DBI-compliant databases.
 
@@ -108,7 +108,8 @@ Developers will also need to know how to connect to the database in the first pl
 
 ## Specialized Code
 
-An obvious benefit of the system we have built is that users have very rapid access to all the NHANES data at once. This enables analyses that combine across cycles which can be quite revealing as we will demonstrate subsequently.  But NHANES is a dynamic system and each cycle has been different from the previous ones. Some of the changes, while seeming innocuous can have substantial impacts on cross-cycle and within cycle analyses. 
+An obvious benefit of the system we have built is that users have very rapid access to all the NHANES data at once. This enables analyses that combine data from multiple cycles, which can be quite revealing as we will demonstrate subsequently.  But NHANES is a dynamic system and each cycle has been different from the previous ones. Some of the changes, while seeming innocuous, can have substantial impacts on cross-cycle and within cycle analyses. 
+
 In this section we focus on tools we have developed to access and interpret the metadata and tools that will help identify specific problems with documentation and processing that could affect the analysis in unexpected ways. We have created an R package called `phonto` [@phonto] that contains a number of R functions to perform various useful tasks taking advantage of the fast database access that would otherwise be too slow to be useful. 
 
 ### Metadata
@@ -119,13 +120,13 @@ NHANES provides a large amount of data in the form of HTML documentation.  We ha
 
 The three tables are:
 
-  * `QuestionnaireDescriptions` - one row per table giving information about the table such as: use constraints, download errors; the `QuestionnaireDescriptions` table is accessible via `phonto::metadata_tab`
+  * `QuestionnaireDescriptions` - one row per table giving information about the table such as: use constraints, download errors; the `QuestionnaireDescriptions` table is accessible via `phonto::metadata_tab`.
 
-* `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation, e.g., the lines of text above the table of values in Figure \@ref(fig:dmdeduc3); the `QuestionnaireVariables` table is accessible via `phonto::metadata_var`
+* `QuestionnaireVariables` - one row per variable, across all tables, provides access to the text descriptions in the HTML documentation, e.g., the lines of text above the table of values in Figure \@ref(fig:dmdeduc3); the `QuestionnaireVariables` table is accessible via `phonto::metadata_var`.
 
-* `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables; e.g., it will have one row for each row of the table in Figure \@ref(fig:dmdeduc3); the `VariableCodebook` table is accessible via `phonto::metadata_cb`
+* `VariableCodebook` - has one row for each possible value for each variable and describes the coded values for all categorical variables; e.g., it will have one row for each row of the table in Figure \@ref(fig:dmdeduc3); the `VariableCodebook` table is accessible via `phonto::metadata_cb`.
 
-Programatic access to these containers is provided by the functions `metadata_tab`, `metadata_var` and `metadata_cb`.  `metadata_tab` filters its ouput on whether or not the table has use constraints (by default only those that are public are returned). Both `metadata_var` and `metadata_cb` can be filtered on table name which allows users to restrict the return value to a single table, or set of tables.
+Programatic access to these containers is provided by the functions `metadata_tab`, `metadata_var` and `metadata_cb`.  The `metadata_tab` function filters its ouput on whether or not the table has use constraints (by default only those that are public are returned). Both `metadata_var` and `metadata_cb` can be filtered on table name which allows users to restrict the return value to a single table, or set of tables.
 
 
 ### Questionnaire Flow and Missing Values
@@ -136,7 +137,7 @@ Apart from the need to properly account for the complex survey design of NHANES 
 
 ### Quality Control
 
-Because NHANES has evolved over the past 20 years it is important that quality control be carried out when combining data over multiple cycles.  Somewhat innocuous changes in abbreviations, capitalization etc can impact the analysis. More substantial changes, such as units, or using the same variable name for two unrelated concepts that can adversely affect the analysis.
+Because NHANES has evolved over the past 20 years it is important that quality control be carried out when combining data over multiple cycles.  Seemingly innocuous changes in abbreviations, capitalization, etc., can impact the analysis. More substantial changes, such as in units, or using the same variable name for two unrelated concepts, can adversely affect the analysis.
 
 The function `qc_var` tests for consistency of a single variable across _all_ tables in public NHANES by default. Currently we test for consistency of the metadata at the top of the variable documentation (e.g., Figure \@ref(fig:dmdeduc3)) including the SAS Label, the Target (who will be asked the questions), the description (English Text) and whether or not the variable is included in more than one table within a cycle.
 
@@ -148,7 +149,7 @@ The function `qc_var` tests for consistency of a single variable across _all_ ta
 
 Detailed examples illustrating the benefits of accessing NHANES data through the Docker container are available at <https://epiconnector.github.io/nhanes-docs/>. Here, we give a few brief examples.
 
-When analyzing data for a single cycle, as is most common, fast access to data is the primary benefit.  For such analysis, we suggest using standard R tools to merge datasets, using `nhanesA` to transparently extract necessary data from the database [@ale2024].  Within a cycle, the `SEQN` variable is a unique identifier for each individual and joins across tables are easily carried out.
+When analyzing data for a single cycle, as is most common, fast access to data is the primary benefit.  For such analyses, we suggest using standard R tools to merge datasets, after using `nhanesA` to transparently extract necessary data from the database [@ale2024].  Within a cycle, the `SEQN` variable is a unique identifier for each individual and joins across tables are easily carried out.
 
 
 ```{r bmisetup, echo=FALSE, results='hide', warnings=FALSE}
@@ -221,7 +222,7 @@ run_time <- proc.time() - start_time
 
 Fast access makes it practical to combine data across cycles. As a simple, but interesting, illustration of the type of analyses enabled by this system, Figure \@ref(fig:bmiplot) plots estimates and confidence intervals for the average BMI among 40--59 year olds in four major population subgroups, for 11 NHANES cycles. The confidence intervals, computed separately for each cycle taking into account sampling weights and the two-stage design of the NHANES survey, are nontrivial but not novel in themselves. What is remarkable is that this entire analysis involving 22 separate NHANES tables across 11 cycles took only around `r round(run_time[["elapsed"]])` seconds to run on a typical personal computer.
 
-When combining data across cycles more care is needed as there can be substantial inconsistencies. Returning to our `DMDEDUC3` example, we saw previously that the SAS Label had changed across cycles. Deeper inspection reveals that other typographic changes were also made, and at least one of those (see Table \@ref(tab:dmdeduc)) would affect any analysis. Since the variable is categorical, it is common to create a `factor` to represent it. In such a factor, the levels '10th Grade' and '10th grade' would be considered different, and they would be treated as representing different quantities. This is easily remedied, but it must be detected first.
+When combining data across cycles, more care is needed as there can be substantial inconsistencies. Returning to the `DMDEDUC3` example from Figure \@ref(fig:dmdeduc3), we saw previously that the SAS Label had changed across cycles. Deeper inspection reveals that other typographic changes were also made, and at least one of those (see Table \@ref(tab:dmdeduc)) would affect any analysis. Since the variable is categorical, it is common to create a `factor` to represent it. In such a factor, the levels '10th Grade' and '10th grade' would be considered different, and they would be treated as representing different quantities. This is easily remedied, but it must be detected first.
 
 By systematically going through all variables in NHANES we have identified several serious issues. In one case a variable has changed units of measurement across cycles (`LBCBHC`) while in another the same variable name has been used to represent two entirely different measurements in some cycles (`LBXHCT`). Thankfully, such examples are rare, but we have certainly not found them all.  A benefit of creating a project like Epiconnector is to allow users to share these important details and thereby lessen the chance that a _finding_ is erroneous.
 
