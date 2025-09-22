@@ -221,3 +221,12 @@ model <- svyglm(LBXGH ~ RIDAGEYR + RIDRETH3, design = df_sub, family = gaussian(
 summary(model)
 ```
 
+We can contrast those results with a call to `lm` without using survey weights.
+We access the variables directly from the survey design object.
+
+```{r}
+
+model2 <- lm(LBXGH ~ RIDAGEYR + RIDRETH3, data = df_sub$variables)
+summary(model2)
+```
+
